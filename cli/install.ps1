@@ -49,23 +49,6 @@ function Install-DevBox {
         return (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
     }
 
-    # Get-WebContent - fetch remote URL text content
-    function Get-WebContent {
-        param([string]$Url, [switch]$BestEffort)
-        try {
-            $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -ErrorAction Stop
-            if ($resp.Content -is [byte[]]) {
-                return [System.Text.Encoding]::UTF8.GetString($resp.Content)
-            }
-            return $resp.Content
-        } catch {
-            if (-not $BestEffort) {
-                Write-ErrorAndExit "Failed to fetch from ${Url}: $($_.Exception.Message)"
-            }
-            return ""
-        }
-    }
-
     # ---------------------------------------------------------------------------
     # Welcome banner
     # ---------------------------------------------------------------------------

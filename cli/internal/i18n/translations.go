@@ -339,6 +339,10 @@ func init() {
 				ZH: "返回的沙箱数量上限（0 表示不限制）",
 				EN: "Limit the number of sandboxes returned (0 for no limit)",
 			},
+			InvalidLimit: Message{
+				ZH: "limit 必须在 0-1000 之间，当前 %d",
+				EN: "limit must be between 0 and 1000, got %d",
+			},
 			FlagFormat: Message{
 				ZH: "输出格式: pretty 或 json",
 				EN: "Output format: pretty or json",

@@ -102,6 +102,7 @@ type SandboxMessages struct {
 	FlagCwd             Message
 	FlagState           Message
 	FlagLimit           Message
+	InvalidLimit        Message
 	FlagFormat          Message
 	FlagDuration        Message
 	FlagBackground      Message

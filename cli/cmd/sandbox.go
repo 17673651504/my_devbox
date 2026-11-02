@@ -213,6 +213,9 @@ var sandboxListCmd = &cobra.Command{
 			params.State = &states
 		}
 		// Aligned with e2b: 0 means no limit (the limit parameter is not sent).
+		if sandboxListLimit < 0 || sandboxListLimit > 1000 {
+			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidLimit), sandboxListLimit)
+		}
 		if sandboxListLimit != 0 {
 			params.Limit = api.PInt(sandboxListLimit)
 		}
