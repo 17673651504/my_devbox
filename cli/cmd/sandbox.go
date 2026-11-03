@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -16,6 +15,7 @@ import (
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/parse"
@@ -83,7 +83,7 @@ var sandboxCreateCmd = &cobra.Command{
 // runSandboxCreate validates the input, creates the sandbox and opens the
 // interactive terminal unless --detach is given.
 func runSandboxCreate(cmd *cobra.Command, args []string) error {
-	if err := validateTemplateID(args[0]); err != nil {
+	if err := helpers.ValidateTemplateID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -92,7 +92,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 	req := api.NewSandbox{TemplateID: args[0]}
 	if cmd.Flags().Changed("timeout") {
-		if err := validateTimeoutSeconds(sandboxCreateTimeout); err != nil {
+		if err := helpers.ValidateTimeoutSeconds(sandboxCreateTimeout); err != nil {
 			return err
 		}
 		req.Timeout = api.PInt32(sandboxCreateTimeout)
@@ -171,7 +171,7 @@ func runSandboxList(cmd *cobra.Command, args []string) error {
 		Order:        api.OptString(sandboxListOrder),
 	}
 	if cmd.Flags().Changed("state") {
-		states, err := parseStates(sandboxListStates)
+		states, err := helpers.ParseStates(sandboxListStates)
 		if err != nil {
 			return err
 		}
@@ -237,7 +237,7 @@ var sandboxInfoCmd = &cobra.Command{
 // runSandboxInfo fetches one sandbox and prints its details as key-value
 // pairs or JSON.
 func runSandboxInfo(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -299,7 +299,7 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 		// List by state/metadata then kill each; the state defaults to running.
 		states := []api.SandboxState{api.Running}
 		if cmd.Flags().Changed("state") {
-			parsed, err := parseStates(sandboxKillState)
+			parsed, err := helpers.ParseStates(sandboxKillState)
 			if err != nil {
 				return err
 			}
@@ -327,7 +327,7 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, id := range ids {
-		if err := validateSandboxID(id); err != nil {
+		if err := helpers.ValidateSandboxID(id); err != nil {
 			return err
 		}
 	}
@@ -355,7 +355,7 @@ var sandboxPauseCmd = &cobra.Command{
 
 // runSandboxPause pauses one sandbox.
 func runSandboxPause(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -380,7 +380,7 @@ var sandboxResumeCmd = &cobra.Command{
 
 // runSandboxResume resumes one paused sandbox; an explicit -t overrides the TTL.
 func runSandboxResume(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -390,7 +390,7 @@ func runSandboxResume(cmd *cobra.Command, args []string) error {
 	// With -t omitted the timeout field is not sent (the sandbox keeps its current TTL); an explicit value is validated and set.
 	opt := api.TimeoutOption{}
 	if cmd.Flags().Changed("timeout") {
-		if err := validateTimeoutSeconds(sandboxResumeTimeout); err != nil {
+		if err := helpers.ValidateTimeoutSeconds(sandboxResumeTimeout); err != nil {
 			return err
 		}
 		opt.Timeout = api.PInt32(sandboxResumeTimeout)
@@ -427,7 +427,7 @@ var sandboxConnectCmd = &cobra.Command{
 // interactive terminal (aligned with e2b's connect): the local terminal
 // becomes the sandbox shell; type exit to leave.
 func runSandboxConnect(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -437,7 +437,7 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	// With -t omitted the timeout field is not sent (the sandbox keeps its current TTL); an explicit value is validated and set.
 	opt := api.TimeoutOption{}
 	if cmd.Flags().Changed("timeout") {
-		if err := validateTimeoutSeconds(sandboxConnectTimeout); err != nil {
+		if err := helpers.ValidateTimeoutSeconds(sandboxConnectTimeout); err != nil {
 			return err
 		}
 		opt.Timeout = api.PInt32(sandboxConnectTimeout)
@@ -468,7 +468,7 @@ var sandboxTimeoutCmd = &cobra.Command{
 // runSandboxTimeout sets the sandbox TTL; -t is optional: omitted uses the
 // default 300, an explicit value is range-checked (10-86400).
 func runSandboxTimeout(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -476,7 +476,7 @@ func runSandboxTimeout(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if cmd.Flags().Changed("timeout") {
-		if err := validateTimeoutSeconds(sandboxTimeoutValue); err != nil {
+		if err := helpers.ValidateTimeoutSeconds(sandboxTimeoutValue); err != nil {
 			return err
 		}
 	}
@@ -504,7 +504,7 @@ var sandboxRefreshCmd = &cobra.Command{
 // runSandboxRefresh extends the sandbox TTL; -d is optional: omitted uses the
 // default 300, an explicit value is range-checked (10-86400).
 func runSandboxRefresh(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -512,7 +512,7 @@ func runSandboxRefresh(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if cmd.Flags().Changed("duration") {
-		if err := validateTimeoutSeconds(sandboxRefreshDuration); err != nil {
+		if err := helpers.ValidateTimeoutSeconds(sandboxRefreshDuration); err != nil {
 			return err
 		}
 	}
@@ -549,7 +549,7 @@ var sandboxExecCmd = &cobra.Command{
 // runSandboxExec runs a remote command inside the sandbox via
 // /bin/bash -l -c and returns the remote exit code as the local exit code.
 func runSandboxExec(cmd *cobra.Command, args []string) error {
-	if err := validateSandboxID(args[0]); err != nil {
+	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
 	c, err := newClient(cmd)
@@ -586,7 +586,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		Cwd:  api.OptString(sandboxExecCwd),
 		User: api.OptString(sandboxExecUser),
 	}
-	piped := pipedStdin()
+	piped := helpers.PipedStdin()
 	stream, err := pc.Start(cmd.Context(), cfg, piped)
 	if err != nil {
 		return err
@@ -730,36 +730,9 @@ func buildRemoteCommand(args []string) (string, error) {
 	}
 	quoted := make([]string, len(args))
 	for i, a := range args {
-		quoted[i] = shellQuote(a)
+		quoted[i] = helpers.ShellQuote(a)
 	}
 	return strings.Join(quoted, " "), nil
-}
-
-// unsafeShellChar matches the characters that need shell quoting (aligned with e2b's UNSAFE_SHELL_CHAR).
-var unsafeShellChar = regexp.MustCompile(`[^\w@%+=:,./-]`)
-
-// shellQuote quotes a single argument per POSIX rules.
-func shellQuote(s string) string {
-	if s == "" {
-		return "''"
-	}
-	if unsafeShellChar.MatchString(s) {
-		return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
-	}
-	return s
-}
-
-// pipedStdin reports whether the local stdin is a pipe/FIFO/socket/redirected file (aligned with e2b's
-// isPipedStdin); an interactive terminal (character device) returns false.
-func pipedStdin() bool {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	if info.Mode()&os.ModeCharDevice != 0 {
-		return false
-	}
-	return info.Mode()&(os.ModeNamedPipe|os.ModeSocket) != 0 || info.Mode().IsRegular()
 }
 
 func init() {
