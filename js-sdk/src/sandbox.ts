@@ -45,6 +45,8 @@ export interface ListSandboxesOptions {
   states?: readonly SandboxState[];
   limit?: number;
   nextToken?: string;
+  startedAfter?: string;
+  order?: "asc" | "desc";
 }
 
 interface SandboxContext {
@@ -100,6 +102,12 @@ export class Sandboxes {
       params.limit = options.limit;
     }
     if (options.nextToken) params.nextToken = options.nextToken;
+    if (options.startedAfter) params.startedAfter = options.startedAfter;
+    if (options.order !== undefined) {
+      if (options.order !== "asc" && options.order !== "desc")
+        throw new RangeError("order must be asc or desc");
+      params.order = options.order;
+    }
     const { body, headers } = await this.#transport.requestWithHeaders("GET", "/sandboxes", {
       params,
     });
@@ -295,6 +303,7 @@ export class Sandbox {
     const payload = await this.#control.request(
       "POST",
       `/sandboxes/${identifier(this.sandboxId)}/connect`,
+      { json: { resume: this.#info.lifecycle?.autoResume ?? false } },
     );
     const [info, connection] = sandboxPayload(payload);
     this.#info = info;

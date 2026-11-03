@@ -156,7 +156,7 @@ def test_gateway_refreshes_expiring_connect_token() -> None:
             "tokenExpiration": 1,
         }
         if request.url.path.endswith("/connect"):
-            assert request.content == b""
+            assert json.loads(request.content) == {"resume": False}
             response.update(connectToken="new-token", tokenExpiration=4_000_000_000)
             return httpx.Response(200, json=response)
         return httpx.Response(201, json=response)

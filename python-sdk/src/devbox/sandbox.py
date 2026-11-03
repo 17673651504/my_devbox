@@ -5,7 +5,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import TracebackType
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 from ._transport import AsyncTransport, SyncTransport
@@ -101,9 +101,15 @@ class Sandboxes:
         states: Sequence[SandboxState | str] = (),
         limit: int | None = None,
         next_token: str | None = None,
+        started_after: str | None = None,
+        order: Literal["asc", "desc"] | None = None,
     ) -> Page[SandboxInfo]:
         payload, headers = self._transport.request_with_headers(
-            "GET", "/sandboxes", params=_list_params(metadata, states, limit, next_token, template)
+            "GET",
+            "/sandboxes",
+            params=_list_params(
+                metadata, states, limit, next_token, template, started_after, order
+            ),
         )
         return _sandbox_page(payload, headers.get("X-Next-Token"), headers.get("X-Total-Running"))
 
@@ -181,9 +187,15 @@ class AsyncSandboxes:
         states: Sequence[SandboxState | str] = (),
         limit: int | None = None,
         next_token: str | None = None,
+        started_after: str | None = None,
+        order: Literal["asc", "desc"] | None = None,
     ) -> Page[SandboxInfo]:
         payload, headers = await self._transport.request_with_headers(
-            "GET", "/sandboxes", params=_list_params(metadata, states, limit, next_token, template)
+            "GET",
+            "/sandboxes",
+            params=_list_params(
+                metadata, states, limit, next_token, template, started_after, order
+            ),
         )
         return _sandbox_page(payload, headers.get("X-Next-Token"), headers.get("X-Total-Running"))
 
@@ -420,7 +432,11 @@ class Sandbox:
         if not _token_needs_refresh(self._connection):
             return
         old_url = _gateway_url(self._connection, self._gateway_url_override)
-        payload = self._control.request("POST", f"/sandboxes/{_id(self.sandbox_id)}/connect")
+        payload = self._control.request(
+            "POST",
+            f"/sandboxes/{_id(self.sandbox_id)}/connect",
+            json_body={"resume": bool(self._info.lifecycle and self._info.lifecycle.auto_resume)},
+        )
         info, connection = _sandbox_payload(payload)
         self._info, self._connection = info, connection
         if self._gateway is not None:
@@ -653,7 +669,11 @@ class AsyncSandbox:
         if not _token_needs_refresh(self._connection):
             return
         old_url = _gateway_url(self._connection, self._gateway_url_override)
-        payload = await self._control.request("POST", f"/sandboxes/{_id(self.sandbox_id)}/connect")
+        payload = await self._control.request(
+            "POST",
+            f"/sandboxes/{_id(self.sandbox_id)}/connect",
+            json_body={"resume": bool(self._info.lifecycle and self._info.lifecycle.auto_resume)},
+        )
         info, connection = _sandbox_payload(payload)
         self._info, self._connection = info, connection
         if self._gateway is not None:
@@ -760,6 +780,8 @@ def _list_params(
     limit: int | None,
     next_token: str | None,
     template: str | None = None,
+    started_after: str | None = None,
+    order: Literal["asc", "desc"] | None = None,
 ) -> dict[str, str | int]:
     params: dict[str, str | int] = {}
     if template:
@@ -776,6 +798,12 @@ def _list_params(
         params["limit"] = limit
     if next_token:
         params["nextToken"] = next_token
+    if started_after:
+        params["startedAfter"] = started_after
+    if order is not None:
+        if order not in ("asc", "desc"):
+            raise ValueError("order must be asc or desc")
+        params["order"] = order
     return params
 
 

@@ -50,6 +50,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes" \
 | `template` | string | 按模板 ID 或别名精确筛选，如 `tpl-devbox-base-test` 或 `default`；省略时不限制模板 |
 | `state` | string | `running`、`paused`，多个状态用逗号分隔；省略时包含两者 |
 | `metadata` | string | URL 编码的键值筛选条件，如 `project=example&stage=test`；所有条件须同时满足 |
+| `startedAfter` | string | 按本次运行的 `startedAt` 筛选，包含边界；使用带时区的 RFC3339 时间，如 `2026-11-03T00:00:00Z` |
+| `order` | string | 按 `startedAt` 排序：`asc` 或 `desc`，默认 `desc`；时间相同时按 sandboxID 升序 |
 | `limit` | integer | 每页 1–1000 条；`0` 或省略时返回全部匹配项，建议显式指定 |
 | `nextToken` | string | 上一页 `X-Next-Token` 响应头，按原值传回 |
 
@@ -62,14 +64,14 @@ curl --fail-with-body -i --get "$DEVBOX_API_URL/sandboxes" \
   --data-urlencode 'limit=20'
 ```
 
-返回 HTTP 200，JSON 为[沙箱对象](#sandbox)数组，按本次运行的 `startedAt` 倒序排列；空列表为 `[]`。
+返回 HTTP 200，JSON 为[沙箱对象](#sandbox)数组，默认按本次运行的 `startedAt` 倒序排列；空列表为 `[]`。恢复会更新本次运行的 `startedAt`，时间筛选不是按首次创建时间。
 
 | 响应头 | 说明 |
 | --- | --- |
 | `X-Next-Token` | 下一页游标；为空表示没有下一页 |
 | `X-Total-Running` | 当前 Namespace 的运行数，独立于本次筛选条件和分页，不是返回条数 |
 
-获取下一页时保持筛选条件不变，将游标放入 `nextToken`。列表不是固定快照；沙箱同时创建或删除时，分页结果可能变化。
+获取下一页时保持筛选条件和排序不变，将游标放入 `nextToken`。列表不是固定快照；沙箱同时创建或删除时，分页结果可能变化。非法时间或排序返回 400。
 
 模板、状态和 metadata 条件同时生效，筛选完成后再分页。没有匹配项时返回 `[]`。
 
@@ -91,6 +93,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 `POST /sandboxes/{sandboxID}/connect`
 
 请求体可省略，或传入 `{"timeout":300}`。`timeout` 为可选整数，单位秒，范围 10–86400。
+
+可选 `resume` 为 boolean，默认 true。传 `{"resume":false}` 只为运行中的沙箱准备凭证；沙箱已暂停时返回 409 `sandbox_paused`，不会恢复。SDK 自动换凭证在未允许自动恢复时使用此选项。主动调用 `connect()` 或 `resume()` 仍可恢复 `autoResume=false` 的沙箱。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
