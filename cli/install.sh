@@ -294,7 +294,7 @@ check_remote_hash() {
     local binary_path="$1"
 
     local installed_version
-    installed_version=$("${binary_path}" version 2>/dev/null || echo "unknown")
+    installed_version=$("${binary_path}" --version 2>/dev/null || echo "unknown")
 
     step "Installed version: ${installed_version}"
     step "Target version:    ${VERSION}"
@@ -453,7 +453,7 @@ verify_installation() {
 
     if [[ -f "${binary_path}" ]]; then
         local installed_version
-        installed_version=$("${binary_path}" version 2>/dev/null || echo "unknown")
+        installed_version=$("${binary_path}" --version 2>/dev/null || echo "unknown")
         echo -e "${GREEN}✓ Installation successful! ${APP_DISPLAY_NAME} version: ${installed_version}${NC}"
     else
         warn "${APP_DISPLAY_NAME} binary not found at ${binary_path}"

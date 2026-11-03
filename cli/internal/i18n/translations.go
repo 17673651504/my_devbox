@@ -335,13 +335,29 @@ func init() {
 				ZH: "按状态过滤: running 或 paused（可重复）",
 				EN: "Filter by state: running or paused (repeatable)",
 			},
-			FlagLimit: Message{
-				ZH: "返回的沙箱数量上限（0 表示不限制）",
-				EN: "Limit the number of sandboxes returned (0 for no limit)",
+			FlagStartedAfter: Message{
+				ZH: "仅列出此时间之后启动的沙箱，如 2025-01-01T00:00:00Z",
+				EN: "filter by start time, only sandboxes started at or after this time are returned, eg. 2025-01-01T00:00:00Z",
+			},
+			FlagOrder: Message{
+				ZH: "按启动时间排序: asc 或 desc（默认 desc）",
+				EN: "sort order by start time, asc or desc (default: desc)",
+			},
+			InvalidOrder: Message{
+				ZH: "排序方式 %q 无效（预期 'asc' 或 'desc'）",
+				EN: "Invalid order, expected 'asc' or 'desc'",
+			},
+			InvalidStartedAfter: Message{
+				ZH: "started-after 无效，预期 ISO 8601 时间戳，如 2025-01-01T00:00:00Z",
+				EN: "Invalid date, expected an ISO 8601 timestamp, eg. 2025-01-01T00:00:00Z",
 			},
 			InvalidLimit: Message{
 				ZH: "limit 必须在 0-1000 之间，当前 %d",
 				EN: "limit must be between 0 and 1000, got %d",
+			},
+			FlagLimit: Message{
+				ZH: "返回的沙箱数量上限（0 表示不限制）",
+				EN: "Limit the number of sandboxes returned (0 for no limit)",
 			},
 			FlagFormat: Message{
 				ZH: "输出格式: pretty 或 json",

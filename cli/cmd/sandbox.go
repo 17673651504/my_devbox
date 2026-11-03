@@ -75,7 +75,7 @@ func parseStates(values []string) ([]api.SandboxState, error) {
 
 // runTerminalSession validates the connection info from the sandbox response
 // and opens the interactive terminal, printing the connecting/closing notices.
-func runTerminalSession(cmd *cobra.Command, sb *api.Sandbox, cwd string, envs map[string]string) error {
+func runTerminalSession(cmd *cobra.Command, sb *api.Sandbox, cwd, user string, envs map[string]string) error {
 	if sb.Domain == nil || *sb.Domain == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
 	}
@@ -87,7 +87,7 @@ func runTerminalSession(cmd *cobra.Command, sb *api.Sandbox, cwd string, envs ma
 		return err
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
-	end, err := term.New(pc, os.Stdin, os.Stdout, cwd, envs).Run(cmd.Context())
+	end, err := term.New(pc, os.Stdin, os.Stdout, cwd, user, envs).Run(cmd.Context())
 	if err != nil {
 		return err
 	}
@@ -116,6 +116,7 @@ var (
 	sandboxCreateAutoResume bool
 	sandboxCreateDetach     bool
 	sandboxCreateCwd        string
+	sandboxCreateUser       string
 )
 
 // sandboxCreateCmd implements `devbox sandbox create <templateID>`, corresponding to POST /sandboxes.
@@ -177,17 +178,19 @@ var sandboxCreateCmd = &cobra.Command{
 		}
 
 		// Default: open the interactive terminal.
-		return runTerminalSession(cmd, sb, sandboxCreateCwd, envMap)
+		return runTerminalSession(cmd, sb, sandboxCreateCwd, sandboxCreateUser, envMap)
 	}),
 }
 
 // sandboxListCmd's flag bound variables.
 var (
-	sandboxListMetadata string
-	sandboxListStates   []string
-	sandboxListTemplate string
-	sandboxListLimit    int32
-	sandboxListFormat   string
+	sandboxListMetadata     string
+	sandboxListStates       []string
+	sandboxListTemplate     string
+	sandboxListStartedAfter string
+	sandboxListOrder        string
+	sandboxListLimit        int32
+	sandboxListFormat       string
 )
 
 // sandboxListCmd implements `devbox sandbox list`, corresponding to GET /sandboxes.
@@ -202,8 +205,10 @@ var sandboxListCmd = &cobra.Command{
 			return err
 		}
 		params := &api.ListSandboxesParams{
-			Metadata: api.OptString(sandboxListMetadata),
-			Template: api.OptString(sandboxListTemplate),
+			Metadata:     api.OptString(sandboxListMetadata),
+			Template:     api.OptString(sandboxListTemplate),
+			StartedAfter: api.OptString(sandboxListStartedAfter),
+			Order:        api.OptString(sandboxListOrder),
 		}
 		if cmd.Flags().Changed("state") {
 			states, err := parseStates(sandboxListStates)
@@ -218,6 +223,15 @@ var sandboxListCmd = &cobra.Command{
 		}
 		if sandboxListLimit != 0 {
 			params.Limit = api.PInt(sandboxListLimit)
+		}
+		if sandboxListOrder != "" && sandboxListOrder != "asc" && sandboxListOrder != "desc" {
+			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOrder), sandboxListOrder)
+		}
+		if sandboxListStartedAfter != "" {
+			if _, err := time.Parse(time.RFC3339, sandboxListStartedAfter); err != nil {
+				return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
+			}
+			params.StartedAfter = api.PString(sandboxListStartedAfter)
 		}
 
 		res, err := c.ListSandboxes(cmd.Context(), params)
@@ -424,6 +438,7 @@ var sandboxResumeCmd = &cobra.Command{
 var (
 	sandboxConnectTimeout int32
 	sandboxConnectCwd     string
+	sandboxConnectUser    string
 	sandboxConnectEnv     []string
 )
 
@@ -465,7 +480,7 @@ var sandboxConnectCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 		}
-		return runTerminalSession(cmd, sb, sandboxConnectCwd, envMap)
+		return runTerminalSession(cmd, sb, sandboxConnectCwd, sandboxConnectUser, envMap)
 	}),
 }
 
@@ -539,6 +554,7 @@ var sandboxRefreshCmd = &cobra.Command{
 var (
 	sandboxExecBackground bool
 	sandboxExecCwd        string
+	sandboxExecUser       string
 	sandboxExecEnv        []string
 )
 
@@ -588,6 +604,7 @@ var sandboxExecCmd = &cobra.Command{
 			Args: []string{"-l", "-c", cmdStr},
 			Envs: envMap,
 			Cwd:  api.OptString(sandboxExecCwd),
+			User: api.OptString(sandboxExecUser),
 		}
 		piped := pipedStdin()
 		stream, err := pc.Start(cmd.Context(), cfg, piped)
@@ -783,11 +800,17 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
+	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
 	sandboxListCmd.Flags().StringVarP(&sandboxListTemplate, "template", "t", "",
 		i18n.T(i18n.Msg.Sandbox.FlagTemplateFilter))
+	sandboxListCmd.Flags().StringVar(&sandboxListStartedAfter, "started-after", "",
+		i18n.T(i18n.Msg.Sandbox.FlagStartedAfter))
+	sandboxListCmd.Flags().StringVarP(&sandboxListOrder, "order", "o", "",
+		i18n.T(i18n.Msg.Sandbox.FlagOrder))
 	sandboxListCmd.Flags().StringSliceVarP(&sandboxListStates, "state", "s", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagState))
 	sandboxListCmd.Flags().Int32VarP(&sandboxListLimit, "limit", "l", 100,
@@ -809,6 +832,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
+	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 	sandboxConnectCmd.Flags().StringArrayVarP(&sandboxConnectEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnvTerm))
 
@@ -824,6 +849,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagBackground))
 	sandboxExecCmd.Flags().StringVarP(&sandboxExecCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
+	sandboxExecCmd.Flags().StringVarP(&sandboxExecUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 	sandboxExecCmd.Flags().StringArrayVarP(&sandboxExecEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnv))
 	// Everything after the sandbox ID is passed through to the remote command.

@@ -147,11 +147,13 @@ type Unavailable = Error
 
 // ListSandboxesParams defines parameters for ListSandboxes.
 type ListSandboxesParams struct {
-	Metadata  *string         `form:"metadata,omitempty" json:"metadata,omitempty"`
-	State     *[]SandboxState `form:"state,omitempty" json:"state,omitempty"`
-	Template  *string         `form:"template,omitempty" json:"template,omitempty"`
-	NextToken *string         `form:"nextToken,omitempty" json:"nextToken,omitempty"`
-	Limit     *int            `form:"limit,omitempty" json:"limit,omitempty"`
+	Metadata     *string         `form:"metadata,omitempty" json:"metadata,omitempty"`
+	State        *[]SandboxState `form:"state,omitempty" json:"state,omitempty"`
+	Template     *string         `form:"template,omitempty" json:"template,omitempty"`
+	StartedAfter *string         `form:"startedAfter,omitempty" json:"startedAfter,omitempty"`
+	Order        *string         `form:"order,omitempty" json:"order,omitempty"`
+	NextToken    *string         `form:"nextToken,omitempty" json:"nextToken,omitempty"`
+	Limit        *int            `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // RefreshSandboxJSONBody defines parameters for RefreshSandbox.
@@ -546,6 +548,8 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 			{"metadata", params.Metadata, "string", true},
 			{"state", params.State, "array", false},
 			{"template", params.Template, "string", true},
+			{"startedAfter", params.StartedAfter, "string", true},
+			{"order", params.Order, "string", true},
 			{"nextToken", params.NextToken, "string", true},
 			{"limit", params.Limit, "integer", true},
 		} {

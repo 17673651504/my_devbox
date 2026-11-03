@@ -26,6 +26,7 @@ type Session struct {
 	in   *os.File
 	out  *os.File
 	cwd  string
+	user string
 	envs map[string]string
 
 	sawOutput atomic.Bool
@@ -34,8 +35,8 @@ type Session struct {
 // New builds a Session wired to the given process client and local files
 // (typically os.Stdin and os.Stdout). An empty cwd uses the sandbox default
 // working directory; envs are terminal-session environment variables.
-func New(pc *client.ProcessClient, in, out *os.File, cwd string, envs map[string]string) *Session {
-	return &Session{pc: pc, in: in, out: out, cwd: cwd, envs: envs}
+func New(pc *client.ProcessClient, in, out *os.File, cwd, user string, envs map[string]string) *Session {
+	return &Session{pc: pc, in: in, out: out, cwd: cwd, user: user, envs: envs}
 }
 
 // Run starts the remote shell and pumps input/output until the shell exits
@@ -106,6 +107,9 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 	}
 	if s.cwd != "" {
 		cfg.Cwd = &s.cwd
+	}
+	if s.user != "" {
+		cfg.User = &s.user
 	}
 
 	stream, err := s.pc.StartPTY(ctx, cfg, cols, rows)

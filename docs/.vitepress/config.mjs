@@ -11,6 +11,7 @@ export default defineConfig({
       { text: "快速入门", link: "/" },
       { text: "API 参考", link: "/api/" },
       { text: "SDK 参考", link: "/reference/sdk" },
+      { text: "CLI", link: "/cli/" },
     ],
     sidebar: [
       {
@@ -49,6 +50,16 @@ export default defineConfig({
           { text: "终端", link: "/reference/sdk#终端" },
           { text: "Git", link: "/reference/sdk#git" },
           { text: "配置与异常", link: "/reference/sdk#配置" },
+        ],
+      },
+      {
+        text: "CLI 参考",
+        items: [
+          { text: "概览", link: "/cli/" },
+          { text: "安装", link: "/cli/install" },
+          { text: "登录与认证", link: "/cli/authentication" },
+          { text: "模板", link: "/cli/templates" },
+          { text: "沙箱管理", link: "/cli/sandboxes" },
         ],
       },
       {

@@ -100,6 +100,11 @@ type SandboxMessages struct {
 	FlagAutoResume      Message
 	FlagDetach          Message
 	FlagCwd             Message
+	FlagUser            Message
+	FlagStartedAfter    Message
+	FlagOrder           Message
+	InvalidOrder        Message
+	InvalidStartedAfter Message
 	FlagState           Message
 	FlagLimit           Message
 	InvalidLimit        Message

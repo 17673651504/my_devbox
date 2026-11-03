@@ -222,7 +222,7 @@ Environment Variables:
     function Test-RemoteHash {
         param([string]$BinaryPath)
 
-        $installedVersion = & $BinaryPath version 2>$null
+        $installedVersion = & $BinaryPath --version 2>$null
         if (-not $installedVersion) { $installedVersion = "unknown" }
 
         Write-Step "Installed version: $installedVersion"
