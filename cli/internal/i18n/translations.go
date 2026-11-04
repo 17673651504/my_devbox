@@ -8,8 +8,8 @@ func init() {
 				EN: "CLI for the DevBox sandbox manager",
 			},
 			RootLong: Message{
-				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。\n\n配置的解析顺序：\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
-				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\nIt covers the full sandbox lifecycle (create, list, info, kill, pause,\nresume, connect, exec) and templates.\n\nConfiguration is resolved in this order:\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
+				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。\n\n配置的解析顺序：\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.huawei/devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
+				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\nIt covers the full sandbox lifecycle (create, list, info, kill, pause,\nresume, connect, exec) and templates.\n\nConfiguration is resolved in this order:\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.huawei/devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
 			},
 			FlagVerbose: Message{
 				ZH: "打印调试日志（含接口请求/返回）",
@@ -335,6 +335,26 @@ func init() {
 				ZH: "按状态过滤: running 或 paused（可重复）",
 				EN: "Filter by state: running or paused (repeatable)",
 			},
+			FlagStartedAfter: Message{
+				ZH: "仅列出此时间之后启动的沙箱，如 2025-01-01T00:00:00Z",
+				EN: "filter by start time, only sandboxes started at or after this time are returned, eg. 2025-01-01T00:00:00Z",
+			},
+			FlagOrder: Message{
+				ZH: "按启动时间排序: asc 或 desc（默认 desc）",
+				EN: "sort order by start time, asc or desc (default: desc)",
+			},
+			InvalidOrder: Message{
+				ZH: "排序方式 %q 无效（预期 'asc' 或 'desc'）",
+				EN: "Invalid order, expected 'asc' or 'desc'",
+			},
+			InvalidStartedAfter: Message{
+				ZH: "started-after 无效，预期 ISO 8601 时间戳，如 2025-01-01T00:00:00Z",
+				EN: "Invalid date, expected an ISO 8601 timestamp, eg. 2025-01-01T00:00:00Z",
+			},
+			InvalidLimit: Message{
+				ZH: "limit 必须在 0-1000 之间，当前 %d",
+				EN: "limit must be between 0 and 1000, got %d",
+			},
 			FlagLimit: Message{
 				ZH: "返回的沙箱数量上限（0 表示不限制）",
 				EN: "Limit the number of sandboxes returned (0 for no limit)",
@@ -430,104 +450,6 @@ func init() {
 			NoCredential: Message{
 				ZH: "未找到凭据",
 				EN: "no credential found",
-			},
-		},
-		EnvD: EnvDMessages{
-			EmptyDomain: Message{
-				ZH: "envd：domain 为空",
-				EN: "envd: empty domain",
-			},
-			EmptyConnectToken: Message{
-				ZH: "envd：connect token 为空",
-				EN: "envd: empty connect token",
-			},
-			InvalidDomain: Message{
-				ZH: "envd：domain %q 无效：%w",
-				EN: "envd: invalid domain %q: %w",
-			},
-			InvalidDomainScheme: Message{
-				ZH: "envd：domain %q 无效：需要 http(s)://host 形式",
-				EN: "envd: invalid domain %q: expected http(s)://host",
-			},
-			InvalidDomainHost: Message{
-				ZH: "envd：domain %q 无效：缺少主机名",
-				EN: "envd: invalid domain %q: missing host",
-			},
-			EncodeStartBody: Message{
-				ZH: "envd：编码 Start 请求体失败：%w",
-				EN: "envd: encode start body: %w",
-			},
-			ReadStartEvent: Message{
-				ZH: "envd：读取 start 事件失败：%w",
-				EN: "envd: read start event: %w",
-			},
-			ExpectedStartEvent: Message{
-				ZH: "envd：预期 start 事件，实际是 data/end",
-				EN: "envd: expected start event, got data/end",
-			},
-			StreamEndedMidFrame: Message{
-				ZH: "envd：数据流在帧中间结束：%w",
-				EN: "envd: stream ended mid-frame: %w",
-			},
-			InvalidStreamFrame: Message{
-				ZH: "envd：无效的数据流帧（声明 %d 字节）：内容开头 %s",
-				EN: "envd: invalid stream frame (claimed %d bytes): body starts with %s",
-			},
-			ReadFramePayload: Message{
-				ZH: "envd：读取帧内容失败：%w",
-				EN: "envd: read frame payload: %w",
-			},
-			UnexpectedFrameFlags: Message{
-				ZH: "envd：意外的帧标志 0x%02x",
-				EN: "envd: unexpected frame flags 0x%02x",
-			},
-			DecodeFrame: Message{
-				ZH: "envd：解码帧失败：%w",
-				EN: "envd: decode frame: %w",
-			},
-			RPCError: Message{
-				ZH: "envd：RPC 错误 %s：%s",
-				EN: "envd: rpc error %s: %s",
-			},
-			DecodeTrailer: Message{
-				ZH: "envd：解码结束帧失败：%w",
-				EN: "envd: decode trailer: %w",
-			},
-			StreamError: Message{
-				ZH: "envd：数据流错误 %s：%s",
-				EN: "envd: stream error %s: %s",
-			},
-			BuildRequest: Message{
-				ZH: "envd：构造 %s 请求失败：%w",
-				EN: "envd: build %s request: %w",
-			},
-			OpenStream: Message{
-				ZH: "envd：打开 %s 数据流失败：%w",
-				EN: "envd: open %s stream: %w",
-			},
-			StreamHTTPError: Message{
-				ZH: "envd：%s 数据流返回 HTTP %d：%s",
-				EN: "envd: %s stream returned HTTP %d: %s",
-			},
-			StreamContentType: Message{
-				ZH: "envd：%s 数据流的内容类型意外 %q",
-				EN: "envd: %s stream unexpected content type %q",
-			},
-			EncodeBody: Message{
-				ZH: "envd：编码 %s 请求体失败：%w",
-				EN: "envd: encode %s body: %w",
-			},
-			CallFailed: Message{
-				ZH: "envd：%s 调用失败：%w",
-				EN: "envd: %s call: %w",
-			},
-			UnaryHTTPError: Message{
-				ZH: "envd：%s 返回 HTTP %d：%s",
-				EN: "envd: %s returned HTTP %d: %s",
-			},
-			UnaryError: Message{
-				ZH: "envd：%s 错误 %s：%s",
-				EN: "envd: %s error %s: %s",
 			},
 		},
 		Parse: ParseMessages{

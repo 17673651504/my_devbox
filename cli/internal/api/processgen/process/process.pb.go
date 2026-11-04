@@ -127,6 +127,7 @@ type ProcessConfig struct {
 	Args          []string               `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
 	Envs          map[string]string      `protobuf:"bytes,3,rep,name=envs,proto3" json:"envs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Cwd           *string                `protobuf:"bytes,4,opt,name=cwd,proto3,oneof" json:"cwd,omitempty"`
+	User          *string                `protobuf:"bytes,5,opt,name=user,proto3,oneof" json:"user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -185,6 +186,13 @@ func (x *ProcessConfig) GetEnvs() map[string]string {
 func (x *ProcessConfig) GetCwd() string {
 	if x != nil && x.Cwd != nil {
 		return *x.Cwd
+	}
+	return ""
+}
+
+func (x *ProcessConfig) GetUser() string {
+	if x != nil && x.User != nil {
+		return *x.User
 	}
 	return ""
 }
@@ -1718,16 +1726,18 @@ const file_process_process_proto_rawDesc = "" +
 	"\x04size\x18\x01 \x01(\v2\x11.process.PTY.SizeR\x04size\x1a.\n" +
 	"\x04Size\x12\x12\n" +
 	"\x04cols\x18\x01 \x01(\rR\x04cols\x12\x12\n" +
-	"\x04rows\x18\x02 \x01(\rR\x04rows\"\xc3\x01\n" +
+	"\x04rows\x18\x02 \x01(\rR\x04rows\"\xe5\x01\n" +
 	"\rProcessConfig\x12\x10\n" +
 	"\x03cmd\x18\x01 \x01(\tR\x03cmd\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x124\n" +
 	"\x04envs\x18\x03 \x03(\v2 .process.ProcessConfig.EnvsEntryR\x04envs\x12\x15\n" +
-	"\x03cwd\x18\x04 \x01(\tH\x00R\x03cwd\x88\x01\x01\x1a7\n" +
+	"\x03cwd\x18\x04 \x01(\tH\x00R\x03cwd\x88\x01\x01\x12\x17\n" +
+	"\x04user\x18\x05 \x01(\tH\x01R\x04user\x88\x01\x01\x1a7\n" +
 	"\tEnvsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x06\n" +
-	"\x04_cwd\"\r\n" +
+	"\x04_cwdB\a\n" +
+	"\x05_user\"\r\n" +
 	"\vListRequest\"n\n" +
 	"\vProcessInfo\x12.\n" +
 	"\x06config\x18\x01 \x01(\v2\x16.process.ProcessConfigR\x06config\x12\x10\n" +
