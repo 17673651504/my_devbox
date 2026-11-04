@@ -171,6 +171,29 @@ def test_gateway_refreshes_expiring_connect_token() -> None:
             sandbox.close()
 
 
+def test_gateway_response_refreshes_connect_token() -> None:
+    response = {**connection_response(), "domain": "https://runtime.example.test"}
+
+    with client(lambda _: httpx.Response(201, json=response)) as api:
+        sandbox = api.sandboxes.create()
+        try:
+            gateway = sandbox._gateway_transport()
+            sandbox._handle_refreshed_connect_token(
+                httpx.Response(
+                    200,
+                    headers={
+                        "X-Devbox-Connect-Token-Refreshed": "new-token",
+                        "X-Devbox-Connect-Token-Expiration": "4000000000",
+                    },
+                )
+            )
+            assert sandbox._connection.connect_token == "new-token"
+            assert sandbox._connection.token_expiration == 4_000_000_000
+            assert gateway._client.headers["Cookie"] == "relay_token=new-token"
+        finally:
+            sandbox.close()
+
+
 @pytest.mark.asyncio
 async def test_async_gateway_refreshes_expiring_connect_token() -> None:
     requests: list[str] = []

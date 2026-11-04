@@ -37,6 +37,30 @@ def test_sync_tls_is_explicit(monkeypatch: pytest.MonkeyPatch, verify: bool) -> 
         assert constructor.call_args.kwargs["verify"] is verify
 
 
+def test_response_hook_receives_refresh_headers() -> None:
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"X-Devbox-Connect-Token-Refreshed": "new-token"},
+        )
+
+    transport = SyncTransport(
+        "https://runtime.test",
+        headers={},
+        timeout=30,
+        transport=httpx.MockTransport(handler),
+        response_hook=lambda response: seen.append(
+            response.headers["X-Devbox-Connect-Token-Refreshed"]
+        ),
+    )
+    with transport:
+        transport.request("GET", "/health")
+
+    assert seen == ["new-token"]
+
+
 @pytest.mark.parametrize("verify", [True, False])
 def test_async_tls_is_explicit(monkeypatch: pytest.MonkeyPatch, verify: bool) -> None:
     monkeypatch.setenv("DEVBOX_GATEWAY_SKIP_TLS_VERIFY", "true")

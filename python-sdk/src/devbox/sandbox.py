@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import re
 import time
 from collections.abc import Mapping, Sequence
@@ -25,6 +26,8 @@ from .models import (
 from .pty import AsyncPty, Pty
 
 _TOKEN_REFRESH_WINDOW_SECONDS = 300
+_CONNECT_TOKEN_REFRESHED_HEADER = "X-Devbox-Connect-Token-Refreshed"
+_CONNECT_TOKEN_EXPIRATION_HEADER = "X-Devbox-Connect-Token-Expiration"
 
 
 class Sandboxes:
@@ -425,6 +428,7 @@ class Sandbox:
                 headers=_gateway_headers(self._connection),
                 timeout=self._request_timeout,
                 verify=gateway_verify_tls(),
+                response_hook=self._handle_refreshed_connect_token,
             )
         return self._gateway
 
@@ -444,6 +448,27 @@ class Sandbox:
                 self._gateway.update_headers(_gateway_headers(connection))
             else:
                 self._close_gateway()
+
+    def _handle_refreshed_connect_token(self, response: httpx.Response) -> None:
+        token = response.headers.get(_CONNECT_TOKEN_REFRESHED_HEADER)
+        if not token:
+            return
+        expiration = response.headers.get(_CONNECT_TOKEN_EXPIRATION_HEADER)
+        if expiration is None:
+            raise ProtocolError("gateway refreshed token without an expiration")
+        try:
+            token_expiration = int(expiration)
+        except ValueError as error:
+            raise ProtocolError("gateway refreshed token expiration is not an integer") from error
+        if token_expiration <= 0:
+            raise ProtocolError("gateway refreshed token expiration must be positive")
+        self._connection = replace(
+            self._connection,
+            connect_token=token,
+            token_expiration=token_expiration,
+        )
+        if self._gateway is not None:
+            self._gateway.update_headers(_gateway_headers(self._connection))
 
     def _close_gateway(self) -> None:
         if self._gateway is not None:
@@ -662,6 +687,7 @@ class AsyncSandbox:
                 headers=_gateway_headers(self._connection),
                 timeout=self._request_timeout,
                 verify=gateway_verify_tls(),
+                response_hook=self._handle_refreshed_connect_token,
             )
         return self._gateway
 
@@ -681,6 +707,27 @@ class AsyncSandbox:
                 self._gateway.update_headers(_gateway_headers(connection))
             else:
                 await self._close_gateway()
+
+    def _handle_refreshed_connect_token(self, response: httpx.Response) -> None:
+        token = response.headers.get(_CONNECT_TOKEN_REFRESHED_HEADER)
+        if not token:
+            return
+        expiration = response.headers.get(_CONNECT_TOKEN_EXPIRATION_HEADER)
+        if expiration is None:
+            raise ProtocolError("gateway refreshed token without an expiration")
+        try:
+            token_expiration = int(expiration)
+        except ValueError as error:
+            raise ProtocolError("gateway refreshed token expiration is not an integer") from error
+        if token_expiration <= 0:
+            raise ProtocolError("gateway refreshed token expiration must be positive")
+        self._connection = replace(
+            self._connection,
+            connect_token=token,
+            token_expiration=token_expiration,
+        )
+        if self._gateway is not None:
+            self._gateway.update_headers(_gateway_headers(self._connection))
 
     async def _close_gateway(self) -> None:
         if self._gateway is not None:

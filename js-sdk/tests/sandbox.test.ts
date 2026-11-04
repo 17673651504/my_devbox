@@ -150,6 +150,49 @@ describe("sandboxes", () => {
     }
   });
 
+  it("updates the connect token from gateway response headers", async () => {
+    agent = mockAgent();
+    agent
+      .get("https://manager.example.test")
+      .intercept({ path: "/sandboxes", method: "POST" })
+      .reply(201, { ...sandboxResponse, connectToken: "old-token" });
+    const runtime = agent.get("https://runtime.example.test");
+    runtime
+      .intercept({
+        path: "/files?path=%2Ftmp%2Fproof",
+        method: "GET",
+        headers: { cookie: "relay_token=old-token", "e2b-sandbox-id": "sbx-1" },
+      })
+      .reply(200, "proof", {
+        headers: {
+          "X-Devbox-Connect-Token-Refreshed": "new-token",
+          "X-Devbox-Connect-Token-Expiration": "4000000000",
+        },
+      });
+    runtime
+      .intercept({
+        path: "/files?path=%2Ftmp%2Fproof",
+        method: "GET",
+        headers: { cookie: "relay_token=new-token", "e2b-sandbox-id": "sbx-1" },
+      })
+      .reply(200, "proof");
+
+    const client = new DevBox({
+      apiKey: "key",
+      apiUrl: "https://manager.example.test",
+      dispatcher: agent,
+    });
+    const sandbox = await client.sandboxes.create();
+    try {
+      expect(await sandbox.files.read("/tmp/proof")).toBe("proof");
+      expect(await sandbox.files.read("/tmp/proof")).toBe("proof");
+      agent.assertNoPendingInterceptors();
+    } finally {
+      await sandbox.close();
+      await client.close();
+    }
+  });
+
   it("parses the manager tunnel connection contract", () => {
     expect(parseConnection(sandboxResponse, "sbx-1")).toEqual({
       sandboxId: "sbx-1",

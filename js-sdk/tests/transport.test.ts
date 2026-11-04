@@ -88,6 +88,26 @@ describe("Transport", () => {
     });
   });
 
+  it("invokes the response hook before rejecting an error response", async () => {
+    agent = mockAgent();
+    agent
+      .get("https://runtime.example.test")
+      .intercept({ path: "/unavailable", method: "GET" })
+      .reply(
+        503,
+        { error: { code: "unavailable", message: "host is not ready" } },
+        { headers: { "X-Devbox-Connect-Token-Refreshed": "new-token" } },
+      );
+    const seen: string[] = [];
+    const transport = new Transport("https://runtime.example.test", {
+      dispatcher: agent,
+      onResponse: (headers) => seen.push(headers.get("X-Devbox-Connect-Token-Refreshed") ?? ""),
+    });
+
+    await expect(transport.request("GET", "/unavailable")).rejects.toBeInstanceOf(Error);
+    expect(seen).toEqual(["new-token"]);
+  });
+
   it("rejects redirects instead of forwarding credentials", async () => {
     agent = mockAgent();
     agent

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import AsyncGenerator, Generator, Iterator, Mapping
+from collections.abc import AsyncGenerator, Callable, Generator, Iterator, Mapping
 from typing import Any
 
 import httpx
@@ -29,14 +29,17 @@ class SyncTransport:
         timeout: float,
         transport: httpx.BaseTransport | None = None,
         verify: bool = True,
+        response_hook: Callable[[httpx.Response], None] | None = None,
     ) -> None:
         request_headers = {"User-Agent": f"devbox-python-sdk/{__version__}", **headers}
+        event_hooks = {"response": [response_hook]} if response_hook else None
         self._client = httpx.Client(
             base_url=base_url.rstrip("/"),
             headers=request_headers,
             timeout=timeout,
             transport=transport,
             verify=verify,
+            event_hooks=event_hooks,
         )
 
     def request(
@@ -193,14 +196,17 @@ class AsyncTransport:
         timeout: float,
         transport: httpx.AsyncBaseTransport | None = None,
         verify: bool = True,
+        response_hook: Callable[[httpx.Response], None] | None = None,
     ) -> None:
         request_headers = {"User-Agent": f"devbox-python-sdk/{__version__}", **headers}
+        event_hooks = {"response": [response_hook]} if response_hook else None
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers=request_headers,
             timeout=timeout,
             transport=transport,
             verify=verify,
+            event_hooks=event_hooks,
         )
 
     async def request(

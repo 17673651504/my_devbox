@@ -26,6 +26,8 @@ import {
 import { Pty } from "./pty.js";
 
 const TOKEN_REFRESH_WINDOW_SECONDS = 300;
+const CONNECT_TOKEN_REFRESHED_HEADER = "X-Devbox-Connect-Token-Refreshed";
+const CONNECT_TOKEN_EXPIRATION_HEADER = "X-Devbox-Connect-Token-Expiration";
 
 export interface CreateSandboxOptions {
   timeout?: number;
@@ -292,6 +294,7 @@ export class Sandbox {
         headers: gatewayHeaders(this.#connection),
         timeoutMs: this.#context.requestTimeoutMs,
         dispatcher: this.#context.dispatcher,
+        onResponse: (headers) => this.#handleRefreshedConnectToken(headers),
       });
     }
     return this.#gateway;
@@ -320,6 +323,21 @@ export class Sandbox {
   async #closeGateway(): Promise<void> {
     if (this.#gateway) await this.#gateway.close();
     this.#gateway = undefined;
+  }
+
+  #handleRefreshedConnectToken(headers: Headers): void {
+    const connectToken = headers.get(CONNECT_TOKEN_REFRESHED_HEADER);
+    if (!connectToken) return;
+    const rawExpiration = headers.get(CONNECT_TOKEN_EXPIRATION_HEADER);
+    if (rawExpiration === null) {
+      throw new ProtocolError("gateway refreshed token without an expiration");
+    }
+    const tokenExpiration = Number(rawExpiration);
+    if (!Number.isSafeInteger(tokenExpiration) || tokenExpiration <= 0) {
+      throw new ProtocolError("gateway refreshed token expiration is invalid");
+    }
+    this.#connection = { ...this.#connection, connectToken, tokenExpiration };
+    this.#gateway?.updateHeaders(gatewayHeaders(this.#connection));
   }
 }
 

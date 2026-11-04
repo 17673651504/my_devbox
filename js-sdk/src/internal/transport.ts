@@ -114,6 +114,7 @@ export class Transport {
   readonly #timeoutMs: number;
   readonly #dispatcher: Dispatcher;
   readonly #ownsDispatcher: boolean;
+  readonly #onResponse?: (headers: FetchResponse["headers"]) => void;
   readonly #streams = new Set<ConnectStream>();
 
   constructor(
@@ -122,6 +123,7 @@ export class Transport {
       headers?: Record<string, string>;
       timeoutMs?: number;
       dispatcher?: Dispatcher;
+      onResponse?: (headers: FetchResponse["headers"]) => void;
     } = {},
   ) {
     this.#baseUrl = baseUrl.replace(/\/$/, "");
@@ -129,6 +131,7 @@ export class Transport {
     this.#timeoutMs = options.timeoutMs ?? 30_000;
     this.#dispatcher = options.dispatcher ?? new Agent();
     this.#ownsDispatcher = !options.dispatcher;
+    this.#onResponse = options.onResponse;
   }
 
   async request<T = unknown>(
@@ -202,6 +205,7 @@ export class Transport {
           signal,
           dispatcher: this.#dispatcher,
         });
+        this.#onResponse?.(response.headers);
         await validateResponse(response);
         return response;
       },
@@ -241,6 +245,7 @@ export class Transport {
           signal: AbortSignal.timeout(this.#timeoutMs),
           dispatcher: this.#dispatcher,
         });
+        this.#onResponse?.(response.headers);
         await validateResponse(response);
         return response;
       } catch (error) {
