@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// systemLang mirrors devbridge's language detection: env vars first, default
-// to en-us.
+// systemLang resolves the login page language: env vars first, default to
+// en-us.
 func systemLang() string {
 	for _, key := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
 		if val := os.Getenv(key); val != "" {

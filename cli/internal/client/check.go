@@ -13,8 +13,7 @@ import (
 
 const (
 	// DefaultCheckPath is the API key validation endpoint path on the bridge
-	// domain ({AuthCheckDomain}/v1/api-keys/check). Both devbridge and devbox
-	// keys are validated by this endpoint.
+	// domain ({AuthCheckDomain}/v1/api-keys/check).
 	DefaultCheckPath = "/v1/api-keys/check"
 )
 
@@ -26,9 +25,9 @@ var checkHTTPClient = &http.Client{
 }
 
 // VerifyAPIKey validates apiKey against the api-keys check endpoint
-// ({server}/v1/api-keys/check). Both devbridge and devbox keys are validated
-// there. It returns nil when the key is valid (HTTP 200/204), ErrUnauthorized
-// when the key is rejected (HTTP 401), and a wrapped error otherwise.
+// ({server}/v1/api-keys/check). It returns nil when the key is valid (HTTP
+// 200/204), ErrUnauthorized when the key is rejected (HTTP 401), and a wrapped
+// error otherwise.
 func VerifyAPIKey(ctx context.Context, server, apiKey string) error {
 	if apiKey == "" {
 		return ErrUnauthorized

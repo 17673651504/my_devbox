@@ -19,7 +19,13 @@ func TestStartLoginWithNestedResult(t *testing.T) {
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
 	body := strings.NewReader(`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
-	resp, err := http.Post("http://127.0.0.1:"+port+"/", "application/json", body)
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/", body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post callback: %v", err)
 	}

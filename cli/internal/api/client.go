@@ -520,7 +520,7 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/sandboxes")
+	operationPath := "/sandboxes"
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -553,7 +553,8 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 			{"nextToken", params.NextToken, "string", true},
 			{"limit", params.Limit, "integer", true},
 		} {
-			// typed nil pointer 装进 interface 后 != nil，需按 Kind 判空。
+			// A typed nil pointer stored in an interface still compares
+			// != nil; check via reflect Kind/IsNil instead.
 			if v := reflect.ValueOf(qp.value); v.Kind() == reflect.Pointer && v.IsNil() {
 				continue
 			}
@@ -598,7 +599,7 @@ func NewCreateSandboxRequestWithBody(server string, contentType string, body io.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/sandboxes")
+	operationPath := "/sandboxes"
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -917,7 +918,7 @@ func NewListTemplatesRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/templates")
+	operationPath := "/templates"
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -962,18 +963,6 @@ func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithRes
 		return nil, err
 	}
 	return &ClientWithResponses{client}, nil
-}
-
-// WithBaseURL overrides the baseURL.
-func WithBaseURL(baseURL string) ClientOption {
-	return func(c *Client) error {
-		newBaseURL, err := url.Parse(baseURL)
-		if err != nil {
-			return err
-		}
-		c.Server = newBaseURL.String()
-		return nil
-	}
 }
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
@@ -1766,8 +1755,8 @@ func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, req
 
 // ParseListSandboxesResponse parses an HTTP response from a ListSandboxesWithResponse call
 func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1826,8 +1815,8 @@ func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, err
 
 // ParseCreateSandboxResponse parses an HTTP response from a CreateSandboxWithResponse call
 func ParseCreateSandboxResponse(rsp *http.Response) (*CreateSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1887,8 +1876,8 @@ func ParseCreateSandboxResponse(rsp *http.Response) (*CreateSandboxResponse, err
 
 // ParseDeleteSandboxResponse parses an HTTP response from a DeleteSandboxWithResponse call
 func ParseDeleteSandboxResponse(rsp *http.Response) (*DeleteSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1916,8 +1905,8 @@ func ParseDeleteSandboxResponse(rsp *http.Response) (*DeleteSandboxResponse, err
 
 // ParseGetSandboxResponse parses an HTTP response from a GetSandboxWithResponse call
 func ParseGetSandboxResponse(rsp *http.Response) (*GetSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1949,8 +1938,8 @@ func ParseGetSandboxResponse(rsp *http.Response) (*GetSandboxResponse, error) {
 
 // ParseConnectSandboxResponse parses an HTTP response from a ConnectSandboxWithResponse call
 func ParseConnectSandboxResponse(rsp *http.Response) (*ConnectSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1996,8 +1985,8 @@ func ParseConnectSandboxResponse(rsp *http.Response) (*ConnectSandboxResponse, e
 
 // ParsePauseSandboxResponse parses an HTTP response from a PauseSandboxWithResponse call
 func ParsePauseSandboxResponse(rsp *http.Response) (*PauseSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -2032,8 +2021,8 @@ func ParsePauseSandboxResponse(rsp *http.Response) (*PauseSandboxResponse, error
 
 // ParseRefreshSandboxResponse parses an HTTP response from a RefreshSandboxWithResponse call
 func ParseRefreshSandboxResponse(rsp *http.Response) (*RefreshSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -2068,8 +2057,8 @@ func ParseRefreshSandboxResponse(rsp *http.Response) (*RefreshSandboxResponse, e
 
 // ParseResumeSandboxResponse parses an HTTP response from a ResumeSandboxWithResponse call
 func ParseResumeSandboxResponse(rsp *http.Response) (*ResumeSandboxResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -2108,8 +2097,8 @@ func ParseResumeSandboxResponse(rsp *http.Response) (*ResumeSandboxResponse, err
 
 // ParseSetSandboxTimeoutResponse parses an HTTP response from a SetSandboxTimeoutWithResponse call
 func ParseSetSandboxTimeoutResponse(rsp *http.Response) (*SetSandboxTimeoutResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -2144,8 +2133,8 @@ func ParseSetSandboxTimeoutResponse(rsp *http.Response) (*SetSandboxTimeoutRespo
 
 // ParseListTemplatesResponse parses an HTTP response from a ListTemplatesWithResponse call
 func ParseListTemplatesResponse(rsp *http.Response) (*ListTemplatesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
+	bodyBytes, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, err
 	}

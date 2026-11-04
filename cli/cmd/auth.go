@@ -39,7 +39,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		// 2. reuse existing credentials (aligned with devbridge: env var > keyring/config file), verify first.
+		// 2. reuse existing credentials (env var > keyring/config file), verify first.
 		if cred := auth.ReadValidAPIKey(); cred != nil && cred.APIKey != "" {
 			if err := auth.VerifyAPIKey(cmd.Context(), config.AuthCheckDomain, cred.APIKey); err != nil {
 				return auth.LoginVerifyError(i18n.T(i18n.Msg.Auth.LoginVerifyFailed), err)

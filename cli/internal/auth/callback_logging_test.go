@@ -21,8 +21,14 @@ func TestCallbackDebugLogging(t *testing.T) {
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
-	resp, err := http.Post("http://127.0.0.1:"+port+"/", "application/json",
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
 		strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post callback: %v", err)
 	}

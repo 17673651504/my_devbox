@@ -57,7 +57,11 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if httpClient.Transport == nil {
 		httpClient.Transport = http.DefaultTransport
 	}
-	httpClient.Transport = &loggingTransport{base: httpClient.Transport}
+	// Only wrap once: re-wrapping an already-instrumented transport would
+	// duplicate log lines when the same http.Client is reused.
+	if _, ok := httpClient.Transport.(*loggingTransport); !ok {
+		httpClient.Transport = &loggingTransport{base: httpClient.Transport}
+	}
 	u, err := url.Parse(server)
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidServerURL), server, err)

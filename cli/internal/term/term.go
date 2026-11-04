@@ -26,7 +26,6 @@ type Session struct {
 	in   *os.File
 	out  *os.File
 	cwd  string
-	user string
 	envs map[string]string
 
 	sawOutput atomic.Bool
@@ -35,8 +34,8 @@ type Session struct {
 // New builds a Session wired to the given process client and local files
 // (typically os.Stdin and os.Stdout). An empty cwd uses the sandbox default
 // working directory; envs are terminal-session environment variables.
-func New(pc *client.ProcessClient, in, out *os.File, cwd, user string, envs map[string]string) *Session {
-	return &Session{pc: pc, in: in, out: out, cwd: cwd, user: user, envs: envs}
+func New(pc *client.ProcessClient, in, out *os.File, cwd string, envs map[string]string) *Session {
+	return &Session{pc: pc, in: in, out: out, cwd: cwd, envs: envs}
 }
 
 // Run starts the remote shell and pumps input/output until the shell exits
@@ -108,9 +107,6 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 	if s.cwd != "" {
 		cfg.Cwd = &s.cwd
 	}
-	if s.user != "" {
-		cfg.User = &s.user
-	}
 
 	stream, err := s.pc.StartPTY(ctx, cfg, cols, rows)
 	if err != nil {
@@ -131,7 +127,6 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 			case *process.ProcessEvent_Start:
 				pid.Store(e.Start.GetPid())
 			case *process.ProcessEvent_Data:
-				s.sawOutput.Store(true)
 				data := e.Data.GetPty()
 				if len(data) == 0 {
 					data = e.Data.GetStdout()
@@ -140,6 +135,9 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 					data = e.Data.GetStderr()
 				}
 				if len(data) > 0 {
+					// Only real output counts: an empty Data frame must not
+					// suppress the start retry below.
+					s.sawOutput.Store(true)
 					if _, werr := s.out.Write(data); werr != nil {
 						errCh <- werr
 						cancel()

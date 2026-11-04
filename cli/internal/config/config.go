@@ -69,7 +69,7 @@ func Path() (string, error) {
 }
 
 // ConfigDir returns the devbox config directory, honouring XDG on Linux and
-// falling back to $HOME/.huawei/devbox (aligned with devbridge's layout).
+// falling back to $HOME/.huawei/devbox.
 func ConfigDir() (string, error) {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, "huawei", "devbox"), nil
@@ -167,10 +167,7 @@ func writePersisted(values map[string]any) error {
 
 	// Nothing left to persist: write an empty file instead of "{}".
 	if len(keys) == 0 {
-		if err := os.WriteFile(path, []byte(""), 0o600); err != nil {
-			return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
-		}
-		return nil
+		return writeFileAtomic(path, []byte(""))
 	}
 
 	parts := make([]string, 0, len(keys))
@@ -183,7 +180,18 @@ func writePersisted(values map[string]any) error {
 	}
 
 	data := []byte("{" + strings.Join(parts, ",") + "}\n")
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	return writeFileAtomic(path, data)
+}
+
+// writeFileAtomic writes data via a temp file + rename so an interrupted
+// write never leaves a truncated config behind.
+func writeFileAtomic(path string, data []byte) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
 		return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
 	}
 	return nil

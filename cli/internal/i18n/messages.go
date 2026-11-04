@@ -13,10 +13,9 @@ type Messages struct {
 }
 
 type CommonMessages struct {
-	RootShort    Message
-	RootLong     Message
-	FlagVerbose  Message
-	VersionShort Message
+	RootShort   Message
+	RootLong    Message
+	FlagVerbose Message
 }
 
 type AuthMessages struct {
@@ -45,6 +44,11 @@ type AuthMessages struct {
 	MissingAPIKey      Message
 	LoginTimeout       Message
 	CallbackBizError   Message
+	CallbackForbidden  Message
+	CallbackNoMethod   Message
+	CallbackBadBody    Message
+	CallbackLoginFail  Message
+	CallbackMissingKey Message
 }
 
 type SandboxMessages struct {
@@ -69,6 +73,7 @@ type SandboxMessages struct {
 	Killed              Message
 	KillAllConflict     Message
 	KillRequiresArgs    Message
+	KillPartialFailed   Message
 	FlagKillAll         Message
 	FlagKillState       Message
 	FlagKillMetadata    Message
@@ -85,6 +90,8 @@ type SandboxMessages struct {
 	ExecLong            Message
 	NoProcessID         Message
 	StdinAfterExit      Message
+	StdinForwardFailed  Message
+	CloseStdinFailed    Message
 	MissingCommand      Message
 	FlagTimeout         Message
 	FlagNewTimeout      Message
@@ -100,7 +107,6 @@ type SandboxMessages struct {
 	FlagAutoResume      Message
 	FlagDetach          Message
 	FlagCwd             Message
-	FlagUser            Message
 	FlagStartedAfter    Message
 	FlagOrder           Message
 	InvalidOrder        Message
@@ -130,6 +136,7 @@ type ClientMessages struct {
 	BuildVerifyRequest     Message
 	VerifyFailed           Message
 	VerifyUnexpectedStatus Message
+	EmptyResponseBody      Message
 	InvalidSandboxDomain   Message
 	InvalidDomainScheme    Message
 	NothingToStore         Message
@@ -143,7 +150,6 @@ type ParseMessages struct {
 }
 
 type ConfigMessages struct {
-	BindEnvFailed         Message
 	ReadConfigFileFailed  Message
 	ResolveHomeFailed     Message
 	ParseConfigFileFailed Message
@@ -153,8 +159,9 @@ type ConfigMessages struct {
 }
 
 type OutputMessages struct {
-	UnknownFormat Message
-	EncodeFailed  Message
+	UnknownFormat     Message
+	EncodeFailed      Message
+	RowLengthMismatch Message
 }
 
 var Msg Messages

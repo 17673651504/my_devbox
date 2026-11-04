@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 // newVerifyServer mocks the API key check endpoint on the bridge domain.
@@ -25,19 +26,19 @@ func newVerifyServer(t *testing.T, validKey string) *httptest.Server {
 }
 
 func TestVerifyAPIKeyValid(t *testing.T) {
-	srv := newVerifyServer(t, "devbridge_good-key")
+	srv := newVerifyServer(t, "devbox_good-key")
 	defer srv.Close()
 
-	if err := VerifyAPIKey(context.Background(), srv.URL, "devbridge_good-key"); err != nil {
+	if err := VerifyAPIKey(context.Background(), srv.URL, "devbox_good-key"); err != nil {
 		t.Fatalf("expected valid key to pass, got: %v", err)
 	}
 }
 
 func TestVerifyAPIKeyInvalid(t *testing.T) {
-	srv := newVerifyServer(t, "devbridge_good-key")
+	srv := newVerifyServer(t, "devbox_good-key")
 	defer srv.Close()
 
-	err := VerifyAPIKey(context.Background(), srv.URL, "devbridge_bad-key")
+	err := VerifyAPIKey(context.Background(), srv.URL, "devbox_bad-key")
 	if err == nil {
 		t.Fatal("expected an error for an invalid key")
 	}
@@ -86,7 +87,13 @@ func TestStartLoginWithCallback(t *testing.T) {
 
 	callback := "http://127.0.0.1:" + port + "/"
 	body := strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
-	resp, err := http.Post(callback, "application/json", body)
+	req, err := http.NewRequest(http.MethodPost, callback, body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post callback: %v", err)
 	}
@@ -114,13 +121,77 @@ func TestStartLoginRejectsMissingKey(t *testing.T) {
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
 
-	resp, err := http.Post("http://127.0.0.1:"+port+"/", "application/json",
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
 		strings.NewReader(`{"error_code":"E1"}`))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post callback: %v", err)
 	}
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400 for missing key, got %d", resp.StatusCode)
+	}
+}
+
+// postCallback posts body with the given Origin header ("" omits it) and
+// returns the response status.
+func postCallback(t *testing.T, port, origin, body string) int {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
+		strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if origin != "" {
+		req.Header.Set("Origin", origin)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post callback: %v", err)
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode
+}
+
+// TestStartLoginRejectsForeignOrigin verifies the callback fails closed: only
+// the login page origin is accepted; foreign or missing Origin headers get 403
+// and never satisfy the wait (a planted-key CSRF is rejected).
+func TestStartLoginRejectsForeignOrigin(t *testing.T) {
+	cases := []struct {
+		name   string
+		origin string
+	}{
+		{"mismatched origin", "https://evil.example.com"},
+		{"missing origin", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			session, err := StartLogin("https://devstation.connect.huaweicloud.com")
+			if err != nil {
+				t.Fatalf("start login: %v", err)
+			}
+			defer session.Close()
+
+			u, _ := url.Parse(session.URL)
+			port := u.Query().Get("callback")
+			status := postCallback(t, port, tc.origin,
+				`{"apiKey":"planted-key","userName":"evil","userId":"e-1"}`)
+			if status != http.StatusForbidden {
+				t.Fatalf("expected 403, got %d", status)
+			}
+
+			// The wait must not be satisfied by the rejected callback.
+			ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+			defer cancel()
+			if _, _, err := session.Wait(ctx); err == nil {
+				t.Fatal("Wait must not succeed for a rejected callback")
+			}
+		})
 	}
 }

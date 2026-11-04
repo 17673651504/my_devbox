@@ -1,16 +1,9 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"os/signal"
 	"strconv"
-	"strings"
-	"syscall"
 	"time"
-
-	"connectrpc.com/connect"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
@@ -19,35 +12,9 @@ import (
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/parse"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/term"
 
 	"github.com/spf13/cobra"
 )
-
-// runTerminalSession validates the connection info from the sandbox response
-// and opens the interactive terminal, printing the connecting/closing notices.
-func runTerminalSession(cmd *cobra.Command, sb *api.Sandbox, cwd, user string, envs map[string]string) error {
-	if sb.Domain == nil || *sb.Domain == "" {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
-	}
-	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
-	}
-	pc, err := client.NewProcessClient(*sb.Domain, sb.SandboxID, *sb.ConnectToken, nil)
-	if err != nil {
-		return err
-	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
-	end, err := term.New(pc, os.Stdin, os.Stdout, cwd, user, envs).Run(cmd.Context())
-	if err != nil {
-		return err
-	}
-	if end != nil && end.ExitCode != 0 {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.RemoteShellExited)+"\n", end.ExitCode, end.Status)
-	}
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ClosingConnection)+"\n", sb.SandboxID)
-	return nil
-}
 
 // sandboxCmd implements `devbox sandbox`.
 var sandboxCmd = &cobra.Command{
@@ -67,7 +34,6 @@ var (
 	sandboxCreateAutoResume bool
 	sandboxCreateDetach     bool
 	sandboxCreateCwd        string
-	sandboxCreateUser       string
 )
 
 // sandboxCreateCmd implements `devbox sandbox create <templateID>`, corresponding to POST /sandboxes.
@@ -114,7 +80,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 		if !ot.Valid() {
 			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOnTimeout), sandboxCreateOnTimeout)
 		}
-		if sandboxCreateAutoResume && sandboxCreateOnTimeout != "pause" {
+		if sandboxCreateAutoResume && sandboxCreateOnTimeout != string(api.Pause) {
 			return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
 		}
 		req.Lifecycle = &api.SandboxLifecycle{OnTimeout: ot, AutoResume: sandboxCreateAutoResume}
@@ -134,7 +100,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return runTerminalSession(cmd, sb, sandboxCreateCwd, sandboxCreateUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), sb, sandboxCreateCwd, envMap)
 }
 
 // sandboxListCmd's flag bound variables.
@@ -164,6 +130,15 @@ func runSandboxList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Validate order/time before assembling params so nothing is set twice.
+	if sandboxListOrder != "" && sandboxListOrder != "asc" && sandboxListOrder != "desc" {
+		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOrder), sandboxListOrder)
+	}
+	if sandboxListStartedAfter != "" {
+		if _, err := time.Parse(time.RFC3339, sandboxListStartedAfter); err != nil {
+			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
+		}
+	}
 	params := &api.ListSandboxesParams{
 		Metadata:     api.OptString(sandboxListMetadata),
 		Template:     api.OptString(sandboxListTemplate),
@@ -184,23 +159,20 @@ func runSandboxList(cmd *cobra.Command, args []string) error {
 	if sandboxListLimit != 0 {
 		params.Limit = api.PInt(sandboxListLimit)
 	}
-	if sandboxListOrder != "" && sandboxListOrder != "asc" && sandboxListOrder != "desc" {
-		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOrder), sandboxListOrder)
-	}
-	if sandboxListStartedAfter != "" {
-		if _, err := time.Parse(time.RFC3339, sandboxListStartedAfter); err != nil {
-			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
-		}
-		params.StartedAfter = api.PString(sandboxListStartedAfter)
-	}
 
 	res, err := c.ListSandboxes(cmd.Context(), params)
 	if err != nil {
 		return err
 	}
 	if len(res.Sandboxes) == 0 && out(cmd) == output.FormatText {
-		fmt.Println(i18n.T(i18n.Msg.Sandbox.ListEmpty))
+		fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ListEmpty))
 		return nil
+	}
+	// Redact sensitive fields (connectToken/tokenExpiration) from JSON output,
+	// consistent with `info -f json`.
+	jsonSandboxes := make([]map[string]any, 0, len(res.Sandboxes))
+	for i := range res.Sandboxes {
+		jsonSandboxes = append(jsonSandboxes, helpers.SandboxJSON(&res.Sandboxes[i]))
 	}
 	rows := make([][]string, 0, len(res.Sandboxes))
 	for _, sb := range res.Sandboxes {
@@ -217,7 +189,7 @@ func runSandboxList(cmd *cobra.Command, args []string) error {
 		})
 	}
 	return output.Print(cmd.OutOrStdout(), out(cmd), output.Spec{
-		JSON:    res.Sandboxes,
+		JSON:    jsonSandboxes,
 		Headers: []string{"SANDBOX ID", "TEMPLATE ID", "STARTED AT", "END AT", "STATE", "VCPUS", "RAM(MB)", "DISK(MB)", "METADATA"},
 		Rows:    rows,
 	})
@@ -259,10 +231,10 @@ func runSandboxInfo(cmd *cobra.Command, args []string) error {
 		{Key: "Disk(MB)", Value: strconv.Itoa(int(sb.DiskSizeMB))},
 		{Key: "Lifecycle", Value: output.JSONString(sb.Lifecycle)},
 		{Key: "Metadata", Value: output.FormatMetadata(sb.Metadata)},
-		{Key: "Tunnel ID", Value: output.Dash(strFromPtr(sb.TunnelId))},
-		{Key: "Domain", Value: output.Dash(strFromPtr(sb.Domain))},
+		{Key: "Tunnel ID", Value: output.Dash(helpers.StrFromPtr(sb.TunnelId))},
+		{Key: "Domain", Value: output.Dash(helpers.StrFromPtr(sb.Domain))},
 	}
-	return output.Print(cmd.OutOrStdout(), out(cmd), output.Spec{JSON: sb, KV: kv})
+	return output.Print(cmd.OutOrStdout(), out(cmd), output.Spec{JSON: helpers.SandboxJSON(sb), KV: kv})
 }
 
 // sandboxKillCmd's flag bound variables.
@@ -331,12 +303,19 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	failed := 0
 	for _, id := range ids {
 		if err := c.DeleteSandbox(cmd.Context(), id); err != nil {
+			// Aligned with e2b: failures do not abort the remaining kills,
+			// but the command exits non-zero when any deletion failed.
+			failed++
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s: %v\n", id, err)
 			continue
 		}
 		_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.Killed)+"\n", id)
+	}
+	if failed > 0 {
+		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.KillPartialFailed), failed, len(ids))
 	}
 	return nil
 }
@@ -408,7 +387,6 @@ func runSandboxResume(cmd *cobra.Command, args []string) error {
 var (
 	sandboxConnectTimeout int32
 	sandboxConnectCwd     string
-	sandboxConnectUser    string
 	sandboxConnectEnv     []string
 )
 
@@ -450,7 +428,7 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return runTerminalSession(cmd, sb, sandboxConnectCwd, sandboxConnectUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), sb, sandboxConnectCwd, envMap)
 }
 
 // sandboxTimeoutCmd's flag bound variables.
@@ -529,7 +507,6 @@ func runSandboxRefresh(cmd *cobra.Command, args []string) error {
 var (
 	sandboxExecBackground bool
 	sandboxExecCwd        string
-	sandboxExecUser       string
 	sandboxExecEnv        []string
 )
 
@@ -556,7 +533,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cmdStr, err := buildRemoteCommand(args[1:])
+	cmdStr, err := helpers.BuildRemoteCommand(args[1:])
 	if err != nil {
 		return err
 	}
@@ -584,7 +561,6 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		Args: []string{"-l", "-c", cmdStr},
 		Envs: envMap,
 		Cwd:  api.OptString(sandboxExecCwd),
-		User: api.OptString(sandboxExecUser),
 	}
 	piped := helpers.PipedStdin()
 	stream, err := pc.Start(cmd.Context(), cfg, piped)
@@ -592,147 +568,9 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if sandboxExecBackground {
-		return execBackground(cmd, pc, stream, piped)
+		return helpers.ExecBackground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
 	}
-	return execForeground(cmd, pc, stream, piped)
-}
-
-// execForeground runs in the foreground: forwards the remote stdout/stderr locally, waits for the process to exit
-// and returns the remote exit code as the local exit code.
-func execForeground(cmd *cobra.Command, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
-	var pid uint32
-	var exitCode int32 = 1
-	started := false
-	for stream.Receive() {
-		body := stream.Msg().GetEvent()
-		if body == nil {
-			continue
-		}
-		switch e := body.GetEvent().(type) {
-		case *process.ProcessEvent_Start:
-			pid = e.Start.GetPid()
-			if !started {
-				started = true
-				startSignalForwarder(cmd.Context(), pc, pid)
-				if piped {
-					go streamLocalStdin(cmd.Context(), pc, pid)
-				}
-			}
-		case *process.ProcessEvent_Data:
-			writeProcessEventOutput(e.Data, cmd)
-		case *process.ProcessEvent_End:
-			exitCode = e.End.GetExitCode()
-			if e.End.GetError() != "" {
-				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), e.End.GetError())
-			}
-		case *process.ProcessEvent_Keepalive:
-		}
-	}
-	if err := stream.Err(); err != nil {
-		return err
-	}
-	os.Exit(int(exitCode))
-	return nil
-}
-
-// execBackground runs in the background: waits for the first start event to get the PID, forwards piped input (if any),
-// prints the PID and exits immediately; the remote process keeps running.
-func execBackground(cmd *cobra.Command, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
-	var pid uint32
-	for stream.Receive() {
-		body := stream.Msg().GetEvent()
-		if body == nil {
-			continue
-		}
-		if e, ok := body.GetEvent().(*process.ProcessEvent_Start); ok {
-			pid = e.Start.GetPid()
-			break
-		}
-	}
-	if err := stream.Err(); err != nil {
-		return err
-	}
-	if pid == 0 {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.NoProcessID))
-	}
-	if piped {
-		streamLocalStdin(cmd.Context(), pc, pid)
-	}
-	_ = stream.Close()
-	fmt.Fprintln(os.Stderr, pid)
-	return nil
-}
-
-// startSignalForwarder forwards local SIGINT/SIGTERM as a remote SIGKILL (aligned with e2b):
-// after the remote process is terminated the event stream receives an end event and the local side exits accordingly.
-func startSignalForwarder(ctx context.Context, pc *client.ProcessClient, pid uint32) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		defer signal.Stop(sigCh)
-		select {
-		case <-sigCh:
-			killCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			defer cancel()
-			_ = pc.SendSignal(killCtx, pid, process.Signal_SIGNAL_SIGKILL)
-		case <-ctx.Done():
-		}
-	}()
-}
-
-// streamLocalStdin forwards the local piped stdin to the remote process stdin in 64KB chunks,
-// sending CloseStdin after EOF (aligned with e2b's sendStdin).
-func streamLocalStdin(ctx context.Context, pc *client.ProcessClient, pid uint32) {
-	buf := make([]byte, 64*1024)
-	for {
-		n, readErr := os.Stdin.Read(buf)
-		if n > 0 {
-			if err := pc.SendInput(ctx, pid, buf[:n]); err != nil {
-				if client.IsNotFound(err) {
-					fmt.Fprintln(os.Stderr, i18n.T(i18n.Msg.Sandbox.StdinAfterExit))
-				}
-				return
-			}
-		}
-		if readErr != nil {
-			break
-		}
-	}
-	_ = pc.CloseStdin(ctx, pid)
-}
-
-// writeProcessEventOutput writes the remote output frames to the local stdout/stderr.
-func writeProcessEventOutput(data *process.ProcessEvent_DataEvent, cmd *cobra.Command) {
-	if data == nil {
-		return
-	}
-	switch out := data.GetOutput().(type) {
-	case *process.ProcessEvent_DataEvent_Stdout:
-		_, _ = cmd.OutOrStdout().Write(out.Stdout)
-	case *process.ProcessEvent_DataEvent_Stderr:
-		_, _ = cmd.ErrOrStderr().Write(out.Stderr)
-	case *process.ProcessEvent_DataEvent_Pty:
-		_, _ = cmd.OutOrStdout().Write(out.Pty)
-	}
-}
-
-// buildRemoteCommand assembles the remote command (aligned with e2b's buildCommand): a single argument is used
-// as-is; multiple arguments are shell-quoted per POSIX rules and joined, ultimately executed via /bin/bash -c.
-func buildRemoteCommand(args []string) (string, error) {
-	if len(args) > 0 && args[0] == "--" {
-		args = args[1:]
-	}
-	if len(args) == 0 {
-		return "", fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingCommand))
-	}
-	if len(args) == 1 {
-		return args[0], nil
-	}
-	quoted := make([]string, len(args))
-	for i, a := range args {
-		quoted[i] = helpers.ShellQuote(a)
-	}
-	return strings.Join(quoted, " "), nil
+	return helpers.ExecForeground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
 }
 
 func init() {
@@ -752,8 +590,6 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
 
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
@@ -784,8 +620,6 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
 	sandboxConnectCmd.Flags().StringArrayVarP(&sandboxConnectEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnvTerm))
 
@@ -801,8 +635,6 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagBackground))
 	sandboxExecCmd.Flags().StringVarP(&sandboxExecCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxExecCmd.Flags().StringVarP(&sandboxExecUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
 	sandboxExecCmd.Flags().StringArrayVarP(&sandboxExecEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnv))
 	// Everything after the sandbox ID is passed through to the remote command.

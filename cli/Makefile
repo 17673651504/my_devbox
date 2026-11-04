@@ -15,7 +15,7 @@ API_SERVER_URL ?= https://devbox-test.developer.myhuaweicloud.com
 # Override per build: make build LOGIN_URL=https://...
 LOGIN_URL ?= https://devstation.connect.huaweicloud.com
 
-# Domain of the API key verification endpoint (devbridge relay controller).
+# Domain of the API key verification endpoint.
 # Override per build: make build AUTH_CHECK_DOMAIN=https://...
 AUTH_CHECK_DOMAIN ?= https://bridge.developer.myhuaweicloud.com
 

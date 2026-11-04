@@ -15,10 +15,6 @@ func init() {
 				ZH: "打印调试日志（含接口请求/返回）",
 				EN: "print debug logs (API requests/responses)",
 			},
-			VersionShort: Message{
-				ZH: "显示版本号",
-				EN: "show the version",
-			},
 		},
 		Auth: AuthMessages{
 			AuthShort: Message{
@@ -121,6 +117,26 @@ func init() {
 				ZH: "登录失败: %s: %s\n请前往管理页面删除 API Key 后重试。API Key 管理页面： %s",
 				EN: "Login failed: %s: %s\nPlease go to the management page to delete API keys and try again. API key management page: %s",
 			},
+			CallbackForbidden: Message{
+				ZH: "来源校验失败",
+				EN: "forbidden",
+			},
+			CallbackNoMethod: Message{
+				ZH: "仅支持 POST 请求",
+				EN: "method not allowed",
+			},
+			CallbackBadBody: Message{
+				ZH: "请求体无效",
+				EN: "bad request",
+			},
+			CallbackLoginFail: Message{
+				ZH: "登录失败",
+				EN: "login failed",
+			},
+			CallbackMissingKey: Message{
+				ZH: "缺少 API Key",
+				EN: "missing api key",
+			},
 		},
 		Sandbox: SandboxMessages{
 			SandboxShort: Message{
@@ -207,6 +223,10 @@ func init() {
 				ZH: "请指定 sandbox ID 或使用 --all",
 				EN: "specify sandbox ID(s) or use --all",
 			},
+			KillPartialFailed: Message{
+				ZH: "%d/%d 个沙箱终止失败",
+				EN: "%d of %d sandboxes failed to be killed",
+			},
 			FlagKillAll: Message{
 				ZH: "终止所有沙箱（默认 running 状态）",
 				EN: "kill all sandboxes (running state by default)",
@@ -268,8 +288,16 @@ func init() {
 				EN: "sandbox did not return a process id",
 			},
 			StdinAfterExit: Message{
-				ZH: "devbox: 远程命令已退出，stdin 未能送达。",
+				ZH: "devbox: 远端命令已退出，stdin 未送达。",
 				EN: "devbox: Remote command exited before stdin could be delivered.",
+			},
+			StdinForwardFailed: Message{
+				ZH: "devbox: 向远端转发标准输入失败：%v",
+				EN: "devbox: forwarding stdin to the sandbox failed: %v",
+			},
+			CloseStdinFailed: Message{
+				ZH: "devbox: 关闭远端标准输入失败：%v",
+				EN: "devbox: closing remote stdin failed: %v",
 			},
 			MissingCommand: Message{
 				ZH: "缺少要执行的命令",
@@ -451,6 +479,10 @@ func init() {
 				ZH: "未找到凭据",
 				EN: "no credential found",
 			},
+			EmptyResponseBody: Message{
+				ZH: "服务端返回了意外的空响应体",
+				EN: "unexpected empty response body from server",
+			},
 		},
 		Parse: ParseMessages{
 			ExpectedKeyValue: Message{
@@ -459,10 +491,6 @@ func init() {
 			},
 		},
 		Config: ConfigMessages{
-			BindEnvFailed: Message{
-				ZH: "绑定 %s 环境变量失败：%w",
-				EN: "bind %s: %w",
-			},
 			ReadConfigFileFailed: Message{
 				ZH: "读取配置文件失败：%w",
 				EN: "read config file: %w",
@@ -496,6 +524,10 @@ func init() {
 			EncodeFailed: Message{
 				ZH: "编码 JSON 失败：%w",
 				EN: "encode JSON: %w",
+			},
+			RowLengthMismatch: Message{
+				ZH: "表格行有 %d 列，与表头 %d 列不一致",
+				EN: "table row has %d columns, expected %d",
 			},
 		},
 	}
