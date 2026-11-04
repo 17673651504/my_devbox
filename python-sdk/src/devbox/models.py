@@ -49,17 +49,22 @@ class TemplateInfo:
     cpu_count: int
     memory_mb: int
     disk_size_mb: int
+    names: tuple[str, ...] = ()
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> TemplateInfo:
         return cls(
             template_id=str(_pick(value, "templateId", "templateID", "template_id")),
-            name=str(_pick(value, "name")),
+            name=str(
+                value.get("name")
+                or next(iter(_string_tuple(value.get("names"))), value.get("templateID", ""))
+            ),
             aliases=_string_tuple(value.get("aliases")),
             build_id=str(_pick(value, "buildId", "buildID", "build_id")),
             cpu_count=_integer(_pick(value, "cpuCount")),
             memory_mb=_integer(_pick(value, "memoryMB", "memoryMb", "memory_mb")),
             disk_size_mb=_integer(_pick(value, "diskSizeMB", "diskSizeMb", "disk_size_mb")),
+            names=_string_tuple(value.get("names")),
         )
 
 
@@ -105,15 +110,27 @@ class SandboxConnection:
     tunnel_id: str = ""
     connect_token: str = field(default="", repr=False)
     token_expiration: int | None = None
+    envd_access_token: str = field(default="", repr=False)
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any], sandbox_id: str) -> SandboxConnection:
+        domain = str(value.get("domain") or "")
+        url = value.get("envdUrl")
+        if not url:
+            url = domain
+            if (
+                value.get("envdAccessToken")
+                and not value.get("connectToken")
+                and "://" not in domain
+            ):
+                url = f"https://49983-{sandbox_id}.{domain}" if domain else ""
         return cls(
             sandbox_id=sandbox_id,
-            domain=_domain(value.get("domain")),
+            domain=_domain(url),
             tunnel_id=str(value.get("tunnelId") or ""),
-            connect_token=str(value.get("connectToken") or ""),
+            connect_token=str(value.get("connectToken", value.get("envdAccessToken")) or ""),
             token_expiration=_optional_int(value.get("tokenExpiration")),
+            envd_access_token=str(value.get("envdAccessToken") or ""),
         )
 
 

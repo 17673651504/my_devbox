@@ -42,6 +42,7 @@ export interface TemplateInfo {
   cpuCount: number;
   memoryMb: number;
   diskSizeMb: number;
+  names?: string[];
 }
 
 export interface SandboxInfo {
@@ -63,6 +64,7 @@ export interface SandboxConnection {
   tunnelId: string;
   connectToken: string;
   tokenExpiration?: number;
+  envdAccessToken?: string;
 }
 
 export interface ProcessInfo {
@@ -167,7 +169,8 @@ export function parseSandboxInfo(value: WireObject): SandboxInfo {
 export function parseTemplateInfo(value: WireObject): TemplateInfo {
   return {
     templateId: stringValue(pick(value, "templateId", "templateID", "template_id")),
-    name: stringValue(pick(value, "name")),
+    name: stringValue(value.name ?? stringArray(value.names)[0] ?? value.templateID ?? ""),
+    ...(value.names ? { names: stringArray(value.names) } : {}),
     aliases: stringArray(value.aliases),
     buildId: stringValue(pick(value, "buildId", "buildID", "build_id")),
     cpuCount: numberValue(pick(value, "cpuCount")),
@@ -177,14 +180,23 @@ export function parseTemplateInfo(value: WireObject): TemplateInfo {
 }
 
 export function parseConnection(value: WireObject, sandboxId: string): SandboxConnection {
-  let domain = stringValue(value.domain ?? "");
+  let domain = stringValue(value.envdUrl ?? value.domain ?? "");
+  if (
+    !value.envdUrl &&
+    value.envdAccessToken &&
+    !value.connectToken &&
+    domain &&
+    !domain.includes("://")
+  )
+    domain = `https://49983-${sandboxId}.${domain}`;
   if (domain && !domain.startsWith("http://") && !domain.startsWith("https://"))
     domain = `https://${domain}`;
   return {
     sandboxId,
     domain,
     tunnelId: stringValue(value.tunnelId ?? ""),
-    connectToken: stringValue(value.connectToken ?? ""),
+    connectToken: stringValue(value.connectToken ?? value.envdAccessToken ?? ""),
+    ...(value.envdAccessToken ? { envdAccessToken: stringValue(value.envdAccessToken) } : {}),
     tokenExpiration: optionalNumber(value.tokenExpiration),
   };
 }

@@ -334,8 +334,11 @@ function gatewayHeaders(connection: SandboxConnection): Record<string, string> {
   if (!connection.connectToken || /[^A-Za-z0-9._-]/.test(connection.connectToken)) {
     throw new ProtocolError("sandbox response does not provide a valid connectToken");
   }
+  if (connection.envdAccessToken && /[^A-Za-z0-9._-]/.test(connection.envdAccessToken))
+    throw new ProtocolError("sandbox response does not provide a valid envdAccessToken");
   return {
     Cookie: `relay_token=${connection.connectToken}`,
+    ...(connection.envdAccessToken ? { "X-Access-Token": connection.envdAccessToken } : {}),
     "E2B-Sandbox-Id": connection.sandboxId,
     "E2B-Sandbox-Port": "49983",
   };
@@ -360,10 +363,9 @@ function createBody(template: string, options: CreateSandboxOptions): WireObject
     const onTimeout = options.lifecycle.onTimeout ?? "kill";
     if (options.lifecycle.autoResume && onTimeout !== "pause")
       throw new RangeError("lifecycle.autoResume requires onTimeout='pause'");
-    body.lifecycle = {
-      onTimeout,
-      autoResume: options.lifecycle.autoResume ?? false,
-    };
+    body.autoPause = onTimeout === "pause";
+    body.autoResume = { enabled: options.lifecycle.autoResume ?? false };
+    body.lifecycle = { onTimeout, autoResume: options.lifecycle.autoResume ?? false };
   }
   if (options.buildId) body.buildID = options.buildId;
   return body;

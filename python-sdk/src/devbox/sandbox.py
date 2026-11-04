@@ -753,6 +753,8 @@ def _create_body(
             raise ValueError("lifecycle.on_timeout must be 'kill' or 'pause'")
         if lifecycle.auto_resume and lifecycle.on_timeout != "pause":
             raise ValueError("lifecycle.auto_resume requires on_timeout='pause'")
+        body["autoPause"] = lifecycle.on_timeout == "pause"
+        body["autoResume"] = {"enabled": lifecycle.auto_resume}
         body["lifecycle"] = {
             "onTimeout": lifecycle.on_timeout,
             "autoResume": lifecycle.auto_resume,
@@ -841,11 +843,16 @@ def _id(value: str) -> str:
 def _gateway_headers(connection: SandboxConnection) -> dict[str, str]:
     if not re.fullmatch(r"[A-Za-z0-9._-]+", connection.connect_token):
         raise ProtocolError("sandbox response does not provide a valid connectToken")
-    return {
+    headers = {
         "Cookie": f"relay_token={connection.connect_token}",
         "E2B-Sandbox-Id": connection.sandbox_id,
         "E2B-Sandbox-Port": "49983",
     }
+    if connection.envd_access_token:
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", connection.envd_access_token):
+            raise ProtocolError("sandbox response does not provide a valid envdAccessToken")
+        headers["X-Access-Token"] = connection.envd_access_token
+    return headers
 
 
 def _token_needs_refresh(connection: SandboxConnection) -> bool:

@@ -27,8 +27,13 @@
 | `timeout` | integer | 否 | 存活秒数，10–86400，通常默认 300，由服务配置决定 |
 | `envVars` | object | 否 | 沙箱环境变量，值为字符串 |
 | `metadata` | object | 否 | 业务标签，值为字符串 |
+| `autoPause` | boolean | 否 | 到期后暂停而非销毁，默认 false；与 E2B 请求字段一致 |
+| `autoResume` | object / boolean | 否 | 推荐 `{"enabled":true}`，也接受 boolean；启用时要求 `autoPause=true` |
+| `autoPauseMemory` | boolean | 否 | 只支持 true 或省略，保存完整内存快照 |
 | `lifecycle.onTimeout` | string | 否 | `kill` 或 `pause`，默认 `kill` |
 | `lifecycle.autoResume` | boolean | 否 | 允许访问时自动恢复，默认 false；启用时 `onTimeout` 必须为 `pause` |
+
+推荐使用 `autoPause` 与 `autoResume`。原 `lifecycle` 请求继续兼容；同时传两套字段时必须一致，否则返回 400。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes" \
@@ -115,6 +120,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
 `POST /sandboxes/{sandboxID}/pause`
 
 无请求体。请求等待快照保存与暂停完成后返回 HTTP 204，无响应体；已暂停时也返回 204。
+
+也可传 `{"memory":true}`。暂停、恢复和连接均接受 `memory:true` 或省略；`memory:false` 返回 400 `memory_snapshot_required`，不会静默改成完整内存恢复。
 
 ```bash
 curl --fail-with-body -X POST "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/pause" \
@@ -207,7 +214,7 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 | `sandboxID` / `templateID` | string | 沙箱和来源模板 ID |
 | `state` | string | `running` 或 `paused`；销毁后通过 404 表示不可访问 |
 | `startedAt` | string | 本次运行开始时间，恢复后更新 |
-| `endAt` | string / null | 运行状态为存活截止时间；暂停状态为 null，不设 Manager 保留截止时间 |
+| `endAt` | string | 运行状态为存活截止时间；暂停状态保留上次运行截止时间，仅用于兼容客户端，不表示暂停记录的删除期限 |
 | `cpuCount` | integer | CPU 核数 |
 | `memoryMB` / `diskSizeMB` | integer | 内存与磁盘规格，单位 MiB |
 | `metadata` | object | 业务标签，可省略 |
@@ -215,6 +222,22 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 | `domain` | string | 完整沙箱 HTTPS 地址 |
 | `tunnelId` | string | 隧道标识；正常访问使用 domain 即可 |
 | `connectToken` | string | 沙箱访问凭证，用于 relay_token Cookie |
+| `envdAccessToken` | string | 与 connectToken 相同的凭证；DevBox SDK 同时使用 X-Access-Token 头和兼容 Cookie |
+| `envdUrl` | string | 数据面完整 HTTPS 地址；与原接口的 domain 相同 |
+| `envdVersion` | string | 当前 EnvD 协议版本 |
+| `clientID` | string | E2B 兼容字段，当前为空字符串，不作为身份或权限依据 |
 | `tokenExpiration` | integer | 访问凭证的 Unix 到期秒数 |
 
 暂停对象不包含 `domain`、`tunnelId`、`connectToken`、`tokenExpiration`。读取状态不会触发恢复；需要访问入口时调用 connect。
+
+## E2B 兼容范围 {#e2b}
+
+支持 E2B 2.62.x SDK 使用的 `POST /v2/sandboxes`、`GET /v2/sandboxes`、`POST /v2/sandboxes/{sandboxID}/connect`。它们复用上述业务逻辑、鉴权和配额；timeout 的单位仍为秒。E2B 接口返回的 `sandboxID` 使用固定 tunnelId 作为公开别名；所有单沙箱操作同时接受该别名与原 UUID，且仍按当前凭证所属 Namespace 隔离。两种 ID 指向同一个沙箱，不会创建两份资源。
+
+原 UUID 接口的 `domain` 保持完整访问地址；`/v2` 和按公开别名访问时，响应的 `domain` 为基础域名，供 E2B 客户端拼接地址。DevBox SDK 优先读取 `envdUrl`，无需自行拼接。
+
+Gateway 兼容 `端口-sandboxID.基础域名` 与原 `tunnelId-端口.基础域名`，并接受 `X-Access-Token`；它们使用相同的凭证验证和隧道转发链路。需同时发布兼容版本的 Manager 和 Gateway。官方 SDK 的命令、文件读写、CLI exec 和 EnvD 文件监听已通过本地真实转发链路验证；生产域名、TLS 和虚拟机暂停恢复仍需部署后验收。
+
+磁盘-only 快照、模板构建管理等不在本轮兼容范围内。自定义 `network` 和 `allow_internet_access:false` 会明确返回 400，不能用它们声明未实现的网络隔离。
+
+恢复请求兼容 E2B 的 `autoPause`；省略时保留原生命周期策略。

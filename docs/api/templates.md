@@ -33,11 +33,19 @@ curl --fail-with-body "$DEVBOX_API_URL/templates" \
 | --- | --- | --- |
 | `templateID` | string | 创建时传入的模板 ID |
 | `name` | string | 展示名称 |
+| `names` | string[] | E2B 兼容的模板名称数组，包含可用于创建的别名 |
 | `aliases` | string[] | 可用于创建的别名 |
 | `buildID` | string | 该模板当前最新可用 Build |
 | `cpuCount` | integer | CPU 核数 |
 | `memoryMB` | integer | 内存规格，单位 MiB |
 | `diskSizeMB` | integer | 磁盘规格，单位 MiB |
+| `public` | boolean | 当前列表中的模板均为公开模板 |
+| `createdAt` / `updatedAt` | string | 模板创建、更新时间 |
+| `lastSpawnedAt` | string / null | 最近创建沙箱时间 |
+| `spawnCount` / `buildCount` | integer | 创建沙箱次数、Build 数量 |
+| `createdBy` | object / null | 创建人资料，当前为 null |
+| `envdVersion` | string | EnvD 协议版本 |
+| `buildStatus` | string | 返回的可用 Build 为 ready |
 
 列表展示当前可用的公共模板，每个模板包含一个可供创建的 Build。将返回的 `templateID` 或别名传入[创建沙箱](./sandboxes.md#create)；需要固定环境时，同时传入 `buildID`。
 

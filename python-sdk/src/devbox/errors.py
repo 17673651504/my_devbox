@@ -118,7 +118,7 @@ def raise_for_response(response: httpx.Response) -> NoReturn:
         or f"request failed with status {response.status_code}"
     )
     code = str(
-        error.get("code") or error.get("error_code") or error.get("error") or response.status_code
+        error.get("error_code") or error.get("error") or error.get("code") or response.status_code
     )
     target = str(error["target"]) if error.get("target") is not None else None
     details = _details(error.get("details"))

@@ -332,7 +332,7 @@ async function raiseForResponse(response: FetchResponse): Promise<never> {
   const message = String(
     error.message ?? error.error_message ?? `request failed with status ${response.status}`,
   );
-  const code = String(error.code ?? error.error_code ?? error.error ?? response.status);
+  const code = String(error.error_code ?? error.error ?? error.code ?? response.status);
   const details = errorDetails(error.details);
   const options: DevBoxErrorOptions = {
     code,
