@@ -22,6 +22,8 @@ import (
 // by the server (HTTP 401).
 var ErrUnauthorized = errors.New(i18n.T(i18n.Msg.Client.Unauthorized))
 
+var UserAgent = "devbox-cli/dev"
+
 const (
 	// headerAPIKey is the auth header of the DevBox Manager API.
 	headerAPIKey = "X-API-Key"
@@ -72,6 +74,7 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 		server,
 		api.WithHTTPClient(httpClient),
 		api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+			req.Header.Set("User-Agent", UserAgent)
 			if apiKey != "" {
 				req.Header.Set(headerAPIKey, apiKey)
 			}
