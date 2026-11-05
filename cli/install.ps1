@@ -286,10 +286,11 @@ Environment Variables:
 
 
     # ---------------------------------------------------------------------------
-    # Download-Binary - download and extract the tar.gz package from the remote.
+    # Download-Binary - download the tar.gz package and checksums.txt from the remote.
     #
     # Source: explicit -Url wins, otherwise DEFAULT_ARTIFACT_URL (baked per channel).
-    # Returns the extracted binary path (checksums.txt is alongside, for Verify-Checksum).
+    # Returns the downloaded tarball path (checksums.txt is alongside, for Verify-Checksum).
+    # Extraction is deferred to Extract-Binary, after Verify-Checksum passes.
     # ---------------------------------------------------------------------------
     function Download-Binary {
         param([string]$Url, [string]$OutputDir)
@@ -309,6 +310,18 @@ Environment Variables:
         $checksumsPath = Join-Path $OutputDir "checksums.txt"
         Invoke-HttpGet -Url $checksumsUrl -Output $checksumsPath -BestEffort
 
+        return $localTarball
+    }
+
+    # ---------------------------------------------------------------------------
+    # Extract-Binary - extract the verified tar.gz package and return the binary path
+    # ---------------------------------------------------------------------------
+    function Extract-Binary {
+        param([string]$TarballFile)
+
+        $outputDir = Split-Path $TarballFile
+        $tarballName = Split-Path $TarballFile -Leaf
+
         # Extract the tar.gz (Windows 10+ ships tar)
         Write-Step "Extracting ${tarballName} ..."
         $tarCmd = Resolve-TarCommand
@@ -322,22 +335,21 @@ Possible fixes:
 "@
         }
 
-        & $tarCmd xzf "$localTarball" -C "$OutputDir"
+        & $tarCmd xzf "$TarballFile" -C "$outputDir"
 
         # Return the extracted binary path
         $binaryNameInside = Get-BinaryNameInside
-        return Join-Path $OutputDir $binaryNameInside
+        return Join-Path $outputDir $binaryNameInside
     }
 
     # ---------------------------------------------------------------------------
-    # Verify-Checksum - verify the SHA256 hash of the binary
+    # Verify-Checksum - verify the SHA256 hash of the downloaded tar.gz archive
     # ---------------------------------------------------------------------------
     function Verify-Checksum {
-        param([string]$BinaryFile)
+        param([string]$TarballFile)
 
         # GoReleaser artifacts: checksums.txt is at the Release root; the tar.gz is the checksum target
-        $tarballFile = "${BinaryFile}.tar.gz"
-        $checksumsFile = Join-Path (Split-Path $BinaryFile) "checksums.txt"
+        $checksumsFile = Join-Path (Split-Path $TarballFile) "checksums.txt"
 
         if ($Script:SKIP_CHECKSUM) {
             Write-Warn "Skipping checksum verification"
@@ -466,12 +478,18 @@ Possible fixes:
 
         Write-Step "Downloading from remote repository: $($Script:ARTIFACT_URL)"
 
-        $binaryFile = Download-Binary -Url $Script:ARTIFACT_URL -OutputDir $downloadDir.FullName
-        if (-not (Test-Path $binaryFile)) {
+        $tarballFile = Download-Binary -Url $Script:ARTIFACT_URL -OutputDir $downloadDir.FullName
+        if (-not (Test-Path $tarballFile)) {
             Write-ErrorAndExit "Failed to download binary"
         }
 
-        Verify-Checksum -BinaryFile $binaryFile
+        Verify-Checksum -TarballFile $tarballFile
+
+        $binaryFile = Extract-Binary -TarballFile $tarballFile
+        if (-not (Test-Path $binaryFile)) {
+            Write-ErrorAndExit "Failed to extract binary"
+        }
+
         Install-Binary -BinaryFile $binaryFile
         Add-ToPath
         Verify-Installation

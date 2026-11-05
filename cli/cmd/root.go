@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/huaweicloud/devspace-devbox/cli/internal/auth"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/config"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
 
@@ -53,20 +55,24 @@ func init() {
 	RootCmd.AddCommand(authCmd, sandboxCmd, templateCmd)
 }
 
-// runError wraps RunE: on error it silences cobra's usage/error duplication and prints to stderr.
+// runError wraps RunE: on error it silences cobra's usage/error duplication and prints to stderr,
+// except for exit-code carriers which are handled (and exited on) by main.
 func runError(fn func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		err := fn(cmd, args)
 		if err != nil {
 			cmd.SilenceUsage = true
 			cmd.SilenceErrors = true
-			cmd.PrintErrln(err)
+			var ee *helpers.ExitCodeError
+			if !errors.As(err, &ee) {
+				cmd.PrintErrln(err)
+			}
 		}
 		return err
 	}
 }
 
-// newClient builds the API client. The API key resolution order mirrors devbridge: command line
+// newClient builds the API client. The API key resolution order: command line
 // override > HW_DEVBOX_API_KEY env var > stored credentials (keyring first, config file fallback),
 // see auth.ReadValidAPIKey. An unregistered --timeout falls back to the default 30s.
 func newClient(cmd *cobra.Command) (*client.Client, error) {
@@ -92,12 +98,4 @@ func out(cmd *cobra.Command) output.Format {
 		return output.FormatText
 	}
 	return format
-}
-
-// strFromPtr converts a nullable string to a display value.
-func strFromPtr(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

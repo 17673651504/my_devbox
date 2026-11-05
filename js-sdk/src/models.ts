@@ -96,6 +96,11 @@ export interface EnvdHealth {
   envdVersion: string;
 }
 
+export interface OomKill {
+  seq: number;
+  process: string;
+}
+
 export interface EnvdMetrics {
   timestamp: Date;
   cpuCount: number;
@@ -105,6 +110,8 @@ export interface EnvdMetrics {
   memCache: number;
   diskTotal: number;
   diskUsed: number;
+  /** Latest guest-kernel OOM kills; undefined while envd has not yet observed the kernel log. */
+  oomKills?: OomKill[];
 }
 
 export interface FileInfo {
@@ -242,6 +249,7 @@ export function parseFileInfo(value: WireObject): FileInfo {
 }
 
 export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
+  const oomKills = value["oom_kills"];
   return {
     timestamp: dateValue(pick(value, "ts")),
     cpuCount: numberValue(pick(value, "cpu_count")),
@@ -251,5 +259,13 @@ export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
     memCache: numberValue(pick(value, "mem_cache")),
     diskTotal: numberValue(pick(value, "disk_total")),
     diskUsed: numberValue(pick(value, "disk_used")),
+    ...(Array.isArray(oomKills)
+      ? { oomKills: oomKills.map((entry) => parseOomKill(entry)) }
+      : {}),
   };
+}
+
+export function parseOomKill(value: unknown): OomKill {
+  const entry = objectValue(value, "EnvD returned an invalid oom kill entry");
+  return { seq: numberValue(pick(entry, "seq")), process: stringValue(pick(entry, "process")) };
 }

@@ -8,8 +8,7 @@
 //
 //  1. command-line flags (bound by the caller, see cmd)
 //  2. environment variables (DEVBOX_API_KEY)
-//  3. the config file ($XDG_CONFIG_HOME/devbox/config.json or
-//     $HOME/.devbox/config.json)
+//  3. the config file ($HOME/.huawei/devbox/config.json)
 //
 // Persistence uses encoding/json on the
 // config file so that only user-set values are written.
@@ -68,12 +67,9 @@ func Path() (string, error) {
 	return filepath.Join(dir, configFileName), nil
 }
 
-// ConfigDir returns the devbox config directory, honouring XDG on Linux and
-// falling back to $HOME/.huawei/devbox (aligned with devbridge's layout).
+// ConfigDir returns the devbox config directory (~/.huawei/devbox),
+// aligned with the shared dot-directory layout.
 func ConfigDir() (string, error) {
-	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, "huawei", "devbox"), nil
-	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf(i18n.T(i18n.Msg.Config.ResolveHomeFailed), err)
@@ -154,9 +150,10 @@ func writePersisted(values map[string]any) error {
 	// Sort keys for deterministic diffs and drop empty values.
 	keys := make([]string, 0, len(values))
 	for k := range values {
-		if values[k] != "" {
-			keys = append(keys, k)
+		if isEmptyValue(values[k]) {
+			continue
 		}
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
@@ -167,10 +164,7 @@ func writePersisted(values map[string]any) error {
 
 	// Nothing left to persist: write an empty file instead of "{}".
 	if len(keys) == 0 {
-		if err := os.WriteFile(path, []byte(""), 0o600); err != nil {
-			return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
-		}
-		return nil
+		return writeFileAtomic(path, []byte(""))
 	}
 
 	parts := make([]string, 0, len(keys))
@@ -183,7 +177,18 @@ func writePersisted(values map[string]any) error {
 	}
 
 	data := []byte("{" + strings.Join(parts, ",") + "}\n")
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	return writeFileAtomic(path, data)
+}
+
+// writeFileAtomic writes data via a temp file + rename so an interrupted
+// write never leaves a truncated config behind.
+func writeFileAtomic(path string, data []byte) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
 		return fmt.Errorf(i18n.T(i18n.Msg.Config.WriteConfigFileFailed), err)
 	}
 	return nil
@@ -195,4 +200,24 @@ func jsonKey(k string) string {
 		return `""`
 	}
 	return string(data)
+}
+
+// isEmptyValue reports whether v is a zero-ish value that should not be
+// persisted: nil, empty string, 0 or false. Composite values (maps, slices)
+// are always kept.
+func isEmptyValue(v any) bool {
+	switch x := v.(type) {
+	case nil:
+		return true
+	case string:
+		return x == ""
+	case bool:
+		return !x
+	case int:
+		return x == 0
+	case float64:
+		return x == 0
+	default:
+		return false
+	}
 }

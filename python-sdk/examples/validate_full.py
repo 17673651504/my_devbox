@@ -220,21 +220,22 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         )
         _step("process.disconnect() | keep the remote process alive", process.disconnect)
 
-    def persistence() -> None:
+    def persistence(handle: Sandbox | None = None) -> None:
         assert process is not None
+        target = sandbox if handle is None else handle
         _equal(
             _step(
                 "files.read_bytes() | compare all 1 MiB after recovery",
-                lambda: sandbox.files.read_bytes(path),
+                lambda: target.files.read_bytes(path),
             ),
             payload,
         )
         print("    CHECK file content: identical (1 MiB)", flush=True)
-        running = _step("commands.list() | find the original running PID", sandbox.commands.list)
+        running = _step("commands.list() | find the original running PID", target.commands.list)
         _equal(any(item.pid == process.pid and item.running for item in running), True)
         print(f"    CHECK original process: pid={process.pid}, still running", flush=True)
-        _validate_environment(sandbox)
-        _equal(_step("sandbox.get_info()", sandbox.get_info).state, SandboxState.RUNNING)
+        _validate_environment(target)
+        _equal(_step("sandbox.get_info()", target.get_info).state, SandboxState.RUNNING)
 
     def deadlines() -> None:
         _step(
@@ -268,6 +269,7 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         persistence()
 
     def connect_resume() -> None:
+        nonlocal sandbox
         _step("sandbox.pause()", sandbox.pause)
         _step("sandbox.close() | close local connections, not the sandbox", sandbox.close)
         connected = _step(
@@ -284,9 +286,14 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
                 payload,
             )
             _deadline(connected, 300)
+            print(
+                "    SWITCH sandbox handle to connected | use the resume response token",
+                flush=True,
+            )
+            persistence(connected)
         finally:
             _step("connected.close() | release the extra SDK handle", connected.close)
-        persistence()
+        sandbox = connected
 
     def automatic_resume(*, fresh_connection: bool) -> None:
         _step(
@@ -306,19 +313,22 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         _expect_result(result, stdout="gateway-wake-ok", stderr="")
         persistence()
 
-    for name, operation in (
-        ("lifecycle.prepare", prepare),
-        ("lifecycle.deadlines", deadlines),
-        ("lifecycle.manual_resume", manual_resume),
-        ("lifecycle.connect_resume", connect_resume),
-        ("lifecycle.gateway_auto_resume", lambda: automatic_resume(fresh_connection=True)),
-        ("lifecycle.gateway_reused_connection", lambda: automatic_resume(fresh_connection=False)),
-    ):
-        failures = len(validator.failures)
-        validator.verify(name, operation)
-        if len(validator.failures) != failures:
-            print("STOP dependent lifecycle steps; cleanup will still run", flush=True)
-            return
+    try:
+        for name, operation in (
+            ("lifecycle.prepare", prepare),
+            ("lifecycle.deadlines", deadlines),
+            ("lifecycle.manual_resume", manual_resume),
+            ("lifecycle.connect_resume", connect_resume),
+            ("lifecycle.gateway_auto_resume", lambda: automatic_resume(fresh_connection=True)),
+            ("lifecycle.gateway_reused_connection", lambda: automatic_resume(fresh_connection=False)),
+        ):
+            failures = len(validator.failures)
+            validator.verify(name, operation)
+            if len(validator.failures) != failures:
+                print("STOP dependent lifecycle steps; cleanup will still run", flush=True)
+                return
+    finally:
+        sandbox.close()
 
 
 def _deadline(sandbox: Sandbox, seconds: int) -> datetime:
@@ -520,6 +530,11 @@ def _validate_envd_runtime(sandbox: Sandbox) -> None:
     age = abs((datetime.now(timezone.utc) - metrics.timestamp).total_seconds())
     if age > 60:
         raise AssertionError(f"EnvD metric timestamp is {age:.1f}s away from local clock")
+    kills = metrics.oom_kills
+    print(f"    oom_kills={'unknown' if kills is None else len(kills)}", flush=True)
+    for kill in kills or ():
+        _equal(kill.seq >= 0, True)
+        _equal(bool(kill.process), True)
 
     envs = _step("envd.get_envs() | read the merged runtime environment", sandbox.envd.get_envs)
     print(f"    env_keys={sorted(envs)}", flush=True)

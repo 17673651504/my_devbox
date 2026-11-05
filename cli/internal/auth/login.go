@@ -23,6 +23,7 @@ import (
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/config"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/mask"
 )
 
 const (
@@ -82,20 +83,20 @@ type callbackBody struct {
 
 var (
 	errMissingAPIKey = errors.New(i18n.T(i18n.Msg.Auth.MissingAPIKey))
-	errLoginTimeout  = errors.New("login timed out; no API key was received")
+	errLoginTimeout  = errors.New(i18n.T(i18n.Msg.Auth.LoginTimeout))
 )
 
 const (
 	// loginOriginParam tells the devstation login page which product is
-	// logging in. It is the only parameter that differs from devbridge.
+	// logging in.
 	loginOriginParam = "devbox"
 
-	// loginPagePath mirrors devbridge's login page route on the devstation
-	// portal; the portal distinguishes products via the origin parameter.
+	// loginPagePath is the devstation portal's login redirect route; the
+	// portal distinguishes products via the origin parameter.
 	loginPagePath = "/space/devbridge/redirect"
 
 	// loginSuccessCode is the success error_code the login page reports in
-	// the callback body (mirrors devbridge).
+	// the callback body.
 	loginSuccessCode = "0000"
 )
 
@@ -108,7 +109,10 @@ func StartLogin(loginBase string) (*LoginSession, error) {
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Auth.BindCallbackServer), err)
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
+	port := 0
+	if addr, ok := listener.Addr().(*net.TCPAddr); ok {
+		port = addr.Port
+	}
 
 	s := &LoginSession{
 		URL:           loginPageURL(loginBase, port),
@@ -163,7 +167,20 @@ func (s *LoginSession) Close() {
 }
 
 func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
-	// Aligned with devbridge: only cross-origin POSTs from the login page are allowed; other origins/methods are rejected.
+	// Fail closed: only the login page origin may drive this callback. A
+	// browser always attaches Origin on a cross-origin POST, so a missing or
+	// mismatched header means the request does not come from the login page
+	// (e.g. a web page trying to plant its own API key).
+	if reqOrigin := r.Header.Get("Origin"); reqOrigin != s.origin {
+		slog.Warn("login callback rejected: origin mismatch",
+			"remote", r.RemoteAddr,
+			"origin", reqOrigin,
+		)
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(i18n.T(i18n.Msg.Auth.CallbackForbidden)))
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", s.origin)
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -173,7 +190,7 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, i18n.T(i18n.Msg.Auth.CallbackNoMethod), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -181,7 +198,7 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
 	if err != nil || json.Unmarshal(data, &cb) != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("bad request"))
+		_, _ = w.Write([]byte(i18n.T(i18n.Msg.Auth.CallbackBadBody)))
 		s.errCh <- errMissingAPIKey
 		return
 	}
@@ -191,11 +208,11 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 		"remote", r.RemoteAddr,
 		"body", maskBodyKeys(data),
 	)
-	// When the login page reports a business error code (e.g. the API key limit is exceeded),
-	// direct the user to the API key management page (aligned with devbridge).
+	// When the login page reports a business error code (e.g. the API key limit is
+	// exceeded), direct the user to the API key management page.
 	if cb.ErrorCode != "" && cb.ErrorCode != loginSuccessCode {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("login failed"))
+		_, _ = w.Write([]byte(i18n.T(i18n.Msg.Auth.CallbackLoginFail)))
 		s.errCh <- fmt.Errorf(i18n.T(i18n.Msg.Auth.CallbackBizError),
 			cb.ErrorCode, cb.ErrorMsg, apikeyPageURL())
 		return
@@ -210,26 +227,16 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	if key == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("missing api key"))
+		_, _ = w.Write([]byte(i18n.T(i18n.Msg.Auth.CallbackMissingKey)))
 		s.errCh <- errMissingAPIKey
 		return
 	}
 
+	// "OK" is a fixed success token the login page expects; do not translate.
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("OK"))
 	cb.APIKey = key
 	s.resultCh <- cb
-}
-
-// maskAPIKey renders only the head and tail fragments of the key.
-func maskAPIKey(key string) string {
-	if key == "" {
-		return ""
-	}
-	if len(key) <= 8 {
-		return strings.Repeat("*", len(key))
-	}
-	return key[:4] + strings.Repeat("*", len(key)-8) + key[len(key)-4:]
 }
 
 // maskBodyKeys renders the callback body as JSON with every apiKey field
@@ -252,7 +259,7 @@ func maskJSONKeys(m map[string]any) {
 	for k, v := range m {
 		if k == "apiKey" {
 			if s, ok := v.(string); ok {
-				m[k] = maskAPIKey(s)
+				m[k] = mask.Key(s)
 			}
 			continue
 		}
@@ -263,8 +270,8 @@ func maskJSONKeys(m map[string]any) {
 }
 
 // loginPageURL builds the devstation login page URL with the local callback
-// port. The format mirrors devbridge's: {base}/space/devbridge/redirect with
-// origin/language/callback parameters, only origin differs (devbox).
+// port: {base}/space/devbridge/redirect with origin/language/callback
+// parameters (the portal's shared login route; origin=devbox selects DevBox).
 func loginPageURL(loginBase string, port int) string {
 	params := url.Values{}
 	params.Set("origin", loginOriginParam)
@@ -295,7 +302,8 @@ func BrowserLogin(ctx context.Context) error {
 	if session.BrowserOpened {
 		fmt.Println(i18n.T(i18n.Msg.Auth.BrowserOpened))
 	} else {
-		// Aligned with devbridge: without a browser, fail immediately and direct the user to the API key management page.
+		// Without a browser, fail immediately and direct the user to the API
+		// key management page.
 		return fmt.Errorf(i18n.T(i18n.Msg.Auth.NoBrowserHint), apikeyPageURL())
 	}
 

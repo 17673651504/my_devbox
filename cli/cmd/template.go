@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
@@ -37,7 +38,7 @@ var templateListCmd = &cobra.Command{
 			return err
 		}
 		if len(tpls) == 0 && out(cmd) == output.FormatText {
-			_, _ = cmd.OutOrStdout().Write([]byte(i18n.T(i18n.Msg.Template.ListEmpty) + "\n"))
+			fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Template.ListEmpty))
 			return nil
 		}
 		rows := make([][]string, 0, len(tpls))
@@ -54,7 +55,7 @@ var templateListCmd = &cobra.Command{
 		}
 		return output.Print(cmd.OutOrStdout(), out(cmd), output.Spec{
 			JSON:    tpls,
-			Headers: []string{"Template ID", "Name", "Aliases", "Build ID", "VCPUS", "RAM(MB)", "Disk(MB)"},
+			Headers: []string{"TEMPLATE ID", "NAME", "ALIASES", "BUILD ID", "VCPUS", "RAM(MB)", "DISK(MB)"},
 			Rows:    rows,
 		})
 	}),

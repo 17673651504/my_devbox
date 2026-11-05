@@ -98,6 +98,11 @@ func printKV(w io.Writer, kv []KV) error {
 }
 
 func printTable(w io.Writer, headers []string, rows [][]string) error {
+	for _, r := range rows {
+		if len(r) != len(headers) {
+			return fmt.Errorf(i18n.T(i18n.Msg.Output.RowLengthMismatch), len(r), len(headers))
+		}
+	}
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.Style().Options.DrawBorder = false
@@ -149,14 +154,7 @@ func FormatTimePtr(t *time.Time) string {
 
 // JoinList joins string items with ", ".
 func JoinList(items []string) string {
-	out := ""
-	for i, item := range items {
-		if i > 0 {
-			out += ", "
-		}
-		out += item
-	}
-	return out
+	return strings.Join(items, ", ")
 }
 
 // FormatMetadata renders sandbox metadata as JSON (e2b-compatible); nil or

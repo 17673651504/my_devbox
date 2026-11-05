@@ -39,7 +39,7 @@ var loginCmd = &cobra.Command{
 			return nil
 		}
 
-		// 2. reuse existing credentials (aligned with devbridge: env var > keyring/config file), verify first.
+		// 2. reuse existing credentials (env var > keyring/config file), verify first.
 		if cred := auth.ReadValidAPIKey(); cred != nil && cred.APIKey != "" {
 			if err := auth.VerifyAPIKey(cmd.Context(), config.AuthCheckDomain, cred.APIKey); err != nil {
 				return auth.LoginVerifyError(i18n.T(i18n.Msg.Auth.LoginVerifyFailed), err)
@@ -73,9 +73,11 @@ var statusCmd = &cobra.Command{
 	Short: i18n.T(i18n.Msg.Auth.StatusShort),
 	Args:  cobra.NoArgs,
 	RunE: runError(func(cmd *cobra.Command, args []string) error {
+		// Normal status answers (LoggedIn/user name) go to stdout; failure hints
+		// and diagnostics go to stderr so redirects and scripts get clean stdout.
 		cred, err := auth.LoadCredential()
 		if err != nil {
-			fmt.Println(i18n.T(i18n.Msg.Auth.NotLoggedIn))
+			fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.NotLoggedIn))
 			return nil
 		}
 
@@ -83,10 +85,10 @@ var statusCmd = &cobra.Command{
 		defer cancel()
 		if err := auth.VerifyAPIKey(ctx, config.AuthCheckDomain, cred.APIKey); err != nil {
 			if auth.IsUnauthorized(err) {
-				fmt.Println(i18n.T(i18n.Msg.Auth.CredInvalidHint))
+				fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.CredInvalidHint))
 				return nil
 			}
-			fmt.Printf(i18n.T(i18n.Msg.Auth.StatusVerifyFailed)+"\n", err)
+			fmt.Fprintf(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.StatusVerifyFailed)+"\n", err)
 			return nil
 		}
 		fmt.Println(i18n.T(i18n.Msg.Auth.LoggedIn))

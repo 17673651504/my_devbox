@@ -248,6 +248,11 @@ async function validateSandbox(client, sandbox, validator) {
       const age = Math.abs(Date.now() - metrics.timestamp.getTime()) / 1000;
       if (age > 60)
         throw new Error(`EnvD metric timestamp is ${age.toFixed(1)}s away from local clock`);
+      console.log(`    oomKills=${metrics.oomKills?.length ?? "unknown"}`);
+      for (const kill of metrics.oomKills ?? []) {
+        equal(kill.seq >= 0, true);
+        equal(Boolean(kill.process), true);
+      }
 
       const envs = await step("envd.getEnvs() | read the merged runtime environment", () =>
         sandbox.envd.getEnvs(),
@@ -280,14 +285,14 @@ async function validateLifecycle(client, sandbox, validator) {
   const payload = Buffer.alloc(1024 * 1024);
   for (let i = 0; i < payload.length; i++) payload[i] = i % 256;
   let process;
-  const persistence = async () => {
+  const persistence = async (handle = sandbox) => {
     const content = await step("files.readBytes() | compare all 1 MiB after recovery", () =>
-      sandbox.files.readBytes(path),
+      handle.files.readBytes(path),
     );
     equal(Buffer.from(content).equals(payload), true);
     console.log("    CHECK file content: identical (1 MiB)");
     const running = await step("commands.list() | find the original running PID", () =>
-      sandbox.commands.list(),
+      handle.commands.list(),
     );
     equal(
       running.some((item) => item.pid === process.pid && item.running),
@@ -295,11 +300,11 @@ async function validateLifecycle(client, sandbox, validator) {
     );
     console.log(`    CHECK original process: pid=${process.pid}, still running`);
     const result = await step("commands.run() | verify sandbox identity and environment", () =>
-      sandbox.commands.run('printf "%s|%s" "$DEVBOX_ID" "$DEVBOX_SDK_ENV"'),
+      handle.commands.run('printf "%s|%s" "$DEVBOX_ID" "$DEVBOX_SDK_ENV"'),
     );
-    equal(result.stdout, `${sandbox.sandboxId}|created-731`);
+    equal(result.stdout, `${handle.sandboxId}|created-731`);
     equal(result.stderr, "");
-    equal((await step("sandbox.getInfo()", () => sandbox.getInfo())).state, SandboxState.Running);
+    equal((await step("sandbox.getInfo()", () => handle.getInfo())).state, SandboxState.Running);
   };
   const automaticResume = async (freshConnection) => {
     await step("setTimeout(10) | onTimeout=pause, autoResume=true", () => sandbox.setTimeout(10));
@@ -389,22 +394,28 @@ async function validateLifecycle(client, sandbox, validator) {
           );
           equal(Buffer.from(content).equals(payload), true);
           await deadline(connected, 300);
+          console.log("    SWITCH sandbox handle to connected | use the resume response token");
+          await persistence(connected);
         } finally {
           await step("connected.close() | release the extra SDK handle", () => connected.close());
         }
-        await persistence();
+        sandbox = connected;
       },
     ],
     ["lifecycle.gatewayAutoResume", () => automaticResume(true)],
     ["lifecycle.gatewayReusedConnection", () => automaticResume(false)],
   ];
-  for (const [name, operation] of stages) {
-    const failures = validator.failures.length;
-    await validator.verify(name, operation);
-    if (validator.failures.length !== failures) {
-      console.log("STOP dependent lifecycle steps; cleanup will still run");
-      return;
+  try {
+    for (const [name, operation] of stages) {
+      const failures = validator.failures.length;
+      await validator.verify(name, operation);
+      if (validator.failures.length !== failures) {
+        console.log("STOP dependent lifecycle steps; cleanup will still run");
+        return;
+      }
     }
+  } finally {
+    await sandbox.close();
   }
 }
 

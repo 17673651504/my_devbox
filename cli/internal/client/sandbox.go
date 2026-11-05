@@ -2,8 +2,10 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 
 // SandboxListResult carries the sandbox list with pagination meta.
@@ -21,6 +23,9 @@ func (c *Client) ListSandboxes(ctx context.Context, params *api.ListSandboxesPar
 	if err := checkStatus(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Client.EmptyResponseBody))
+	}
 	return &SandboxListResult{
 		Sandboxes: *resp.JSON200,
 		NextToken: resp.HTTPResponse.Header.Get(HeaderNextToken),
@@ -36,6 +41,9 @@ func (c *Client) CreateSandbox(ctx context.Context, body api.CreateSandboxJSONRe
 	if err := checkStatus(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Client.EmptyResponseBody))
+	}
 	return resp.JSON201, nil
 }
 
@@ -47,6 +55,9 @@ func (c *Client) GetSandbox(ctx context.Context, sandboxID string) (*api.Sandbox
 	}
 	if err := checkStatus(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Client.EmptyResponseBody))
 	}
 	return resp.JSON200, nil
 }
@@ -78,6 +89,9 @@ func (c *Client) ResumeSandbox(ctx context.Context, sandboxID string, body api.R
 	if err := checkStatus(resp.HTTPResponse, resp.Body); err != nil {
 		return nil, err
 	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Client.EmptyResponseBody))
+	}
 	return resp.JSON201, nil
 }
 
@@ -92,6 +106,9 @@ func (c *Client) ConnectSandbox(ctx context.Context, sandboxID string, body api.
 	}
 	if resp.JSON200 != nil {
 		return resp.JSON200, nil
+	}
+	if resp.JSON201 == nil {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Client.EmptyResponseBody))
 	}
 	return resp.JSON201, nil
 }

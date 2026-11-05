@@ -19,7 +19,7 @@ import (
 // value used by the relay gateway when the E2B-Sandbox-Port header is absent.
 const defaultEnvdPort = 49983
 
-// relayTokenCookie is the cookie name expected by the devbridge relay gateway.
+// relayTokenCookie is the cookie name expected by the sandbox relay gateway.
 const relayTokenCookie = "relay_token"
 
 // relayInterceptor attaches the sandbox connection credentials defined in the
@@ -93,14 +93,17 @@ func NewProcessClient(domain, sandboxID, connectToken string, httpClient *http.C
 }
 
 // envdPortFromDomain extracts the envd port from the first subdomain label of
-// the sandbox domain (<tunnelId>-<port>.host), falling back to 49983.
+// the sandbox domain (<tunnelId>-<port>.host), falling back to 49983. The
+// tunnel ID may itself contain hyphens, so the label is split on the LAST
+// hyphen.
 func envdPortFromDomain(u *url.URL) int {
 	labels := strings.Split(u.Hostname(), ".")
 	if len(labels) == 0 {
 		return defaultEnvdPort
 	}
-	if _, port, ok := strings.Cut(labels[0], "-"); ok {
-		if n, err := strconv.Atoi(port); err == nil && n > 0 {
+	label := labels[0]
+	if idx := strings.LastIndex(label, "-"); idx >= 0 {
+		if n, err := strconv.Atoi(label[idx+1:]); err == nil && n > 0 {
 			return n
 		}
 	}
