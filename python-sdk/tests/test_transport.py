@@ -61,6 +61,33 @@ def test_response_hook_receives_refresh_headers() -> None:
     assert seen == ["new-token"]
 
 
+@pytest.mark.asyncio
+async def test_async_response_hook_receives_refresh_headers() -> None:
+    seen: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"X-Devbox-Connect-Token-Refreshed": "new-token"},
+        )
+
+    transport = AsyncTransport(
+        "https://runtime.test",
+        headers={},
+        timeout=30,
+        transport=httpx.MockTransport(handler),
+        response_hook=lambda response: seen.append(
+            response.headers["X-Devbox-Connect-Token-Refreshed"]
+        ),
+    )
+    try:
+        await transport.request("GET", "/health")
+    finally:
+        await transport.close()
+
+    assert seen == ["new-token"]
+
+
 @pytest.mark.parametrize("verify", [True, False])
 def test_async_tls_is_explicit(monkeypatch: pytest.MonkeyPatch, verify: bool) -> None:
     monkeypatch.setenv("DEVBOX_GATEWAY_SKIP_TLS_VERIFY", "true")

@@ -199,7 +199,13 @@ class AsyncTransport:
         response_hook: Callable[[httpx.Response], None] | None = None,
     ) -> None:
         request_headers = {"User-Agent": f"devbox-python-sdk/{__version__}", **headers}
-        event_hooks = {"response": [response_hook]} if response_hook else None
+        event_hooks = None
+        if response_hook:
+
+            async def invoke_response_hook(response: httpx.Response) -> None:
+                response_hook(response)
+
+            event_hooks = {"response": [invoke_response_hook]}
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers=request_headers,
