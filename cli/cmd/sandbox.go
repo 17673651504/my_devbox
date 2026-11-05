@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -100,7 +101,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), sb, sandboxCreateCwd, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxCreateCwd, envMap)
 }
 
 // sandboxListCmd's flag bound variables.
@@ -428,7 +429,7 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), sb, sandboxConnectCwd, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxConnectCwd, envMap)
 }
 
 // sandboxTimeoutCmd's flag bound variables.

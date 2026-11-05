@@ -13,7 +13,6 @@ func TestSetWritesUserInfo(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("HOME", tmp)
-	t.Setenv("XDG_CONFIG_HOME", "")
 
 	if err := Set("user_info", map[string]any{
 		"user_name": "hw067826022",
@@ -39,7 +38,6 @@ func TestSetAfterEmptyFile(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("USERPROFILE", tmp)
 	t.Setenv("HOME", tmp)
-	t.Setenv("XDG_CONFIG_HOME", "")
 
 	if err := Set("user_info", map[string]any{"user_name": "a", "user_id": "b"}); err != nil {
 		t.Fatalf("set: %v", err)

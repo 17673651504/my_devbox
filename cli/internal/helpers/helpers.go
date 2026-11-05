@@ -145,8 +145,10 @@ func BuildRemoteCommand(args []string) (string, error) {
 }
 
 // RunTerminalSession validates the connection info from the sandbox response
-// and opens the interactive terminal, printing the connecting/closing notices.
-func RunTerminalSession(ctx context.Context, out io.Writer, sb *api.Sandbox, cwd string, envs map[string]string) error {
+// and opens the interactive terminal, printing the connecting/closing notices
+// to msgs. The raw session I/O flows through in/out (typically os.Stdin and
+// os.Stdout).
+func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, sb *api.Sandbox, cwd string, envs map[string]string) error {
 	if sb.Domain == nil || *sb.Domain == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
 	}
@@ -157,15 +159,15 @@ func RunTerminalSession(ctx context.Context, out io.Writer, sb *api.Sandbox, cwd
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(out, i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
-	end, err := term.New(pc, os.Stdin, os.Stdout, cwd, envs).Run(ctx)
+	_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
+	end, err := term.New(pc, in, out, cwd, envs).Run(ctx)
 	if err != nil {
 		return err
 	}
 	if end != nil && end.ExitCode != 0 {
-		_, _ = fmt.Fprintf(out, i18n.T(i18n.Msg.Sandbox.RemoteShellExited)+"\n", end.ExitCode, end.Status)
+		_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.RemoteShellExited)+"\n", end.ExitCode, end.Status)
 	}
-	_, _ = fmt.Fprintf(out, i18n.T(i18n.Msg.Sandbox.ClosingConnection)+"\n", sb.SandboxID)
+	_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.ClosingConnection)+"\n", sb.SandboxID)
 	return nil
 }
 
