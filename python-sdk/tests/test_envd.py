@@ -8,6 +8,7 @@ import pytest
 
 from devbox._transport import AsyncTransport, SyncTransport
 from devbox.envd import AsyncEnvd, Envd
+from devbox.models import OomKill
 
 
 def test_envd_reads_metrics_envs_and_health() -> None:
@@ -29,6 +30,7 @@ def test_envd_reads_metrics_envs_and_health() -> None:
                     "mem_cache": 128,
                     "disk_total": 2048,
                     "disk_used": 1024,
+                    "oom_kills": [{"seq": 3, "process": "python3"}],
                 },
             )
         if request.url.path == "/envs":
@@ -45,6 +47,7 @@ def test_envd_reads_metrics_envs_and_health() -> None:
     assert metrics.cpu_count == 2
     assert metrics.cpu_used_pct == 8.25
     assert metrics.disk_used == 1024
+    assert metrics.oom_kills == (OomKill(seq=3, process="python3"),)
     assert envs == {"DEVBOX_ID": "sbx-1", "DEVBOX_TEMPLATE_ID": "tpl-1"}
     assert health.envd_version == "1.2.3"
     assert [request.method for request in requests] == ["GET", "GET", "GET"]
@@ -72,6 +75,7 @@ async def test_async_envd_reads_metrics_envs_and_health() -> None:
         metrics = await envd.get_metrics()
         assert metrics.cpu_count == 2
         assert metrics.cpu_used_pct == 8.25
+        assert metrics.oom_kills == (OomKill(seq=3, process="python3"),)
         assert (await envd.get_envs())["DEVBOX_ID"] == "sbx-1"
         assert (await envd.health()).envd_version == "1.2.3"
     finally:
@@ -88,7 +92,21 @@ def _metrics_payload() -> Mapping[str, Any]:
         "mem_cache": 128,
         "disk_total": 2048,
         "disk_used": 1024,
+        "oom_kills": [{"seq": 3, "process": "python3"}],
     }
+
+
+def test_envd_metrics_without_oom_kills() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/metrics"
+        payload = dict(_metrics_payload())
+        del payload["oom_kills"]
+        return httpx.Response(200, json=payload)
+
+    with _transport(handler) as transport:
+        metrics = Envd(lambda: transport).get_metrics()
+
+    assert metrics.oom_kills is None
 
 
 def _transport(handler: Any) -> SyncTransport:

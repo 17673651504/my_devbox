@@ -530,6 +530,11 @@ def _validate_envd_runtime(sandbox: Sandbox) -> None:
     age = abs((datetime.now(timezone.utc) - metrics.timestamp).total_seconds())
     if age > 60:
         raise AssertionError(f"EnvD metric timestamp is {age:.1f}s away from local clock")
+    kills = metrics.oom_kills
+    print(f"    oom_kills={'unknown' if kills is None else len(kills)}", flush=True)
+    for kill in kills or ():
+        _equal(kill.seq >= 0, True)
+        _equal(bool(kill.process), True)
 
     envs = _step("envd.get_envs() | read the merged runtime environment", sandbox.envd.get_envs)
     print(f"    env_keys={sorted(envs)}", flush=True)
