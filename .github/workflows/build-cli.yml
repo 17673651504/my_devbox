@@ -11,7 +11,7 @@
 #   otherwise                   → build and package, skip publish.
 #
 # Artifacts: 6 platform tar.gz + checksums.txt + baked install.sh/install.ps1.
-# Targets: GitHub Release and GitCode Release (CloudDeveloperDepartment/devbox).
+# Targets: GitHub Release (17673651504/my_devbox) and GitCode Release (l30082028/my_devbox).
 #
 # NOTE: gitcode_token is passed as a workflow input because this repo cannot
 # store secrets (no write access). It is visible to anyone with read access;
