@@ -41,7 +41,6 @@ func VerifyAPIKey(ctx context.Context, server, apiKey string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Client.BuildVerifyRequest), err)
 	}
 	req.Header.Set(headerAPIKey, apiKey)
-	req.Header.Set("User-Agent", UserAgent)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := checkHTTPClient.Do(req)
@@ -56,6 +55,8 @@ func VerifyAPIKey(ctx context.Context, server, apiKey string) error {
 		return nil
 	case http.StatusUnauthorized:
 		return ErrUnauthorized
+	case http.StatusUpgradeRequired:
+		return &UpgradeRequiredError{}
 	default:
 		return fmt.Errorf(i18n.T(i18n.Msg.Client.VerifyUnexpectedStatus), resp.StatusCode, http.StatusText(resp.StatusCode))
 	}

@@ -419,6 +419,14 @@ func init() {
 				ZH: "API Key 无效或已被禁用",
 				EN: "api key is invalid or disabled",
 			},
+			UpgradeRequired: Message{
+				ZH: "当前 CLI 版本过低，请升级后重试",
+				EN: "your CLI version is too old, please upgrade and retry",
+			},
+			UpdateLabel: Message{
+				ZH: "更新方式：",
+				EN: "Update:",
+			},
 			InvalidServerURL: Message{
 				ZH: "无效的服务器地址 %q：%w",
 				EN: "invalid server URL %q: %w",
