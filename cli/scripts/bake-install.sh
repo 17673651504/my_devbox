@@ -14,7 +14,7 @@
 #
 # Example:
 #   ./scripts/bake-install.sh 1.0.0-release \
-#     "https://github.com/huaweicloud/devspace-devbox/releases/download/1.0.0-release"
+#     "https://github.com/17673651504/my_devbox/releases/download/1.0.0-release"
 #
 # Output:
 #   dist-extra/install.sh / install.ps1   — GitHub channel
