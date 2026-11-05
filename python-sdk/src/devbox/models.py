@@ -188,6 +188,16 @@ class EnvdHealth:
 
 
 @dataclass(frozen=True, slots=True)
+class OomKill:
+    seq: int
+    process: str
+
+    @classmethod
+    def from_wire(cls, value: Mapping[str, Any]) -> OomKill:
+        return cls(seq=_integer(_pick(value, "seq")), process=str(_pick(value, "process")))
+
+
+@dataclass(frozen=True, slots=True)
 class EnvdMetrics:
     timestamp: datetime
     cpu_count: int
@@ -197,12 +207,21 @@ class EnvdMetrics:
     mem_cache: int
     disk_total: int
     disk_used: int
+    oom_kills: tuple[OomKill, ...] | None = None
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> EnvdMetrics:
         timestamp = parse_optional_datetime(_pick(value, "ts"))
         if timestamp is None:
             raise ProtocolError("EnvD metrics response field is missing: ts")
+        oom_kills: tuple[OomKill, ...] | None = None
+        raw_oom_kills = value.get("oom_kills")
+        if raw_oom_kills is not None:
+            if not isinstance(raw_oom_kills, list) or not all(
+                isinstance(entry, Mapping) for entry in raw_oom_kills
+            ):
+                raise ProtocolError("EnvD metrics response field is invalid: oom_kills")
+            oom_kills = tuple(OomKill.from_wire(entry) for entry in raw_oom_kills)
         return cls(
             timestamp=timestamp,
             cpu_count=_integer(_pick(value, "cpu_count")),
@@ -212,6 +231,7 @@ class EnvdMetrics:
             mem_cache=_integer(_pick(value, "mem_cache")),
             disk_total=_integer(_pick(value, "disk_total")),
             disk_used=_integer(_pick(value, "disk_used")),
+            oom_kills=oom_kills,
         )
 
 

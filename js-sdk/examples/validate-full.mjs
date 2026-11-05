@@ -248,6 +248,11 @@ async function validateSandbox(client, sandbox, validator) {
       const age = Math.abs(Date.now() - metrics.timestamp.getTime()) / 1000;
       if (age > 60)
         throw new Error(`EnvD metric timestamp is ${age.toFixed(1)}s away from local clock`);
+      console.log(`    oomKills=${metrics.oomKills?.length ?? "unknown"}`);
+      for (const kill of metrics.oomKills ?? []) {
+        equal(kill.seq >= 0, true);
+        equal(Boolean(kill.process), true);
+      }
 
       const envs = await step("envd.getEnvs() | read the merged runtime environment", () =>
         sandbox.envd.getEnvs(),

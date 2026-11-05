@@ -48,6 +48,13 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf(i18n.T(i18n.Msg.Client.APIErrorFormat), e.StatusCode, http.StatusText(e.StatusCode), e.Message)
 }
 
+// Is reports whether the error matches the given sentinel: an APIError with
+// status 401 matches ErrUnauthorized, so every unauthorized failure can be
+// recognized uniformly via errors.Is regardless of which code path built it.
+func (e *APIError) Is(target error) bool {
+	return target == ErrUnauthorized && e.StatusCode == http.StatusUnauthorized
+}
+
 // New builds a Client authenticated against the given server. An empty
 // apiKey skips the auth header.
 func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
