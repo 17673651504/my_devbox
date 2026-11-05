@@ -52,7 +52,7 @@
   },
   "homepage": "https://github.com/huaweicloud/devspace-devbox/tree/dev/js-sdk#readme",
   "dependencies": {
-    "undici": "^7.16.0"
+    "undici": "^8.12.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
