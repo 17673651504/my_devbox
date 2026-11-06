@@ -207,6 +207,7 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
     path = f"/tmp/devbox-lifecycle-{uuid4().hex[:8]}"
     payload = bytes(range(256)) * 4096
     process: CommandHandle | None = None
+    resume_timings: dict[str, tuple[float, float]] = {}
 
     def prepare() -> None:
         nonlocal process
@@ -270,12 +271,41 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
 
     def connect_resume() -> None:
         nonlocal sandbox
+        pause_started = time.monotonic()
         _step("sandbox.pause()", sandbox.pause)
+        pause_elapsed = time.monotonic() - pause_started
         _step("sandbox.close() | close local connections, not the sandbox", sandbox.close)
+        resume_started = time.monotonic()
         connected = _step(
             "sandboxes.connect(id, timeout=300) | Manager restores the paused sandbox",
             lambda: client.sandboxes.connect(sandbox.sandbox_id, timeout=300),
         )
+        resume_elapsed = time.monotonic() - resume_started
+        resume_timings["normal"] = (pause_elapsed, resume_elapsed)
+        print(
+            f"    TIMING normal resume | pause={pause_elapsed:.3f}s"
+            f" | resume={resume_elapsed:.3f}s"
+            f" | total={pause_elapsed + resume_elapsed:.3f}s",
+            flush=True,
+        )
+        if "upgraded" in resume_timings:
+            upgraded_pause, upgraded_resume = resume_timings["upgraded"]
+            resume_overhead = upgraded_resume - resume_elapsed
+            total_overhead = (
+                upgraded_pause + upgraded_resume - pause_elapsed - resume_elapsed
+            )
+            print(
+                "    TIMING resume comparison | upgraded"
+                f" pause={upgraded_pause:.3f}s resume={upgraded_resume:.3f}s"
+                f" total={upgraded_pause + upgraded_resume:.3f}s"
+                f" | normal pause={pause_elapsed:.3f}s resume={resume_elapsed:.3f}s"
+                f" total={pause_elapsed + resume_elapsed:.3f}s"
+                f" | resume overhead={resume_overhead:+.3f}s"
+                f" ({resume_overhead / resume_elapsed * 100:+.1f}%)"
+                f" | total overhead={total_overhead:+.3f}s"
+                f" ({total_overhead / (pause_elapsed + resume_elapsed) * 100:+.1f}%)",
+                flush=True,
+            )
         try:
             _equal(connected.sandbox_id, sandbox.sandbox_id)
             _equal(
@@ -313,9 +343,63 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         _expect_result(result, stdout="gateway-wake-ok", stderr="")
         persistence()
 
+    def live_upgrade() -> None:
+        nonlocal sandbox
+        before = _step(
+            "envd.health() | read the EnvD version before pause",
+            lambda: sandbox.envd.health(),
+        ).envd_version
+
+        pause_started = time.monotonic()
+        _step("sandbox.pause() | capture the running EnvD state", sandbox.pause)
+        pause_elapsed = time.monotonic() - pause_started
+        _step("sandbox.close() | resume through a fresh SDK handle", sandbox.close)
+
+        resume_started = time.monotonic()
+        connected = _step(
+            "sandboxes.connect(id, timeout=600) | Manager restores and may live-upgrade EnvD",
+            lambda: client.sandboxes.connect(sandbox.sandbox_id, timeout=600),
+        )
+        resume_elapsed = time.monotonic() - resume_started
+        sandbox = connected
+
+        after = _step(
+            "envd.health() | read the EnvD version after resume",
+            lambda: sandbox.envd.health(),
+        ).envd_version
+        upgrade_window = time.monotonic() - pause_started
+        print(
+            f"    before={before!r} after={after!r}"
+            f" | pause={pause_elapsed:.3f}s"
+            f" | resume={resume_elapsed:.3f}s"
+            f" | upgrade_window={upgrade_window:.3f}s",
+            flush=True,
+        )
+
+        if _version_key(after) == _version_key(before):
+            print(
+                "    SKIP live upgrade | target EnvD is not newer; verify normal resume instead",
+                flush=True,
+            )
+        else:
+            if _version_key(after) < _version_key(before):
+                raise AssertionError(f"EnvD was downgraded: {before!r} -> {after!r}")
+            print("    CHECK EnvD was upgraded during resume", flush=True)
+            resume_timings["upgraded"] = (pause_elapsed, resume_elapsed)
+
+        # Whether or not EnvD changed, the same workload and filesystem must
+        # still be usable after the pause/resume cycle.
+        persistence(sandbox)
+        result = _step(
+            "commands.run('printf live-upgrade-probe-ok') | execute a new process",
+            lambda: sandbox.commands.run("printf live-upgrade-probe-ok", timeout=30),
+        )
+        _expect_result(result, stdout="live-upgrade-probe-ok", stderr="")
+
     try:
         for name, operation in (
             ("lifecycle.prepare", prepare),
+            ("lifecycle.live_upgrade", live_upgrade),
             ("lifecycle.deadlines", deadlines),
             ("lifecycle.manual_resume", manual_resume),
             ("lifecycle.connect_resume", connect_resume),
@@ -840,6 +924,13 @@ def _equal(actual: object, expected: object) -> None:
 
 def _seconds(started_at: float) -> str:
     return f"{time.monotonic() - started_at:.3f}"
+
+
+def _version_key(version: str) -> tuple[int, int, int]:
+    match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", version.strip())
+    if not match:
+        raise AssertionError(f"invalid EnvD semantic version: {version!r}")
+    return tuple(int(part) for part in match.groups())
 
 
 if __name__ == "__main__":
