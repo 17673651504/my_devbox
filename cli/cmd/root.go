@@ -44,6 +44,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
+	client.UserAgent = "devbox-cli/" + Version
 	// Global verbose switch (-v): enables debug logs (including API requests/responses).
 	// After registering -v, cobra's --version flag no longer occupies the -v shorthand.
 	RootCmd.PersistentFlags().BoolP("verbose", "v", false, i18n.T(i18n.Msg.Common.FlagVerbose))

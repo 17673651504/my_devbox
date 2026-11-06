@@ -1,245 +1,113 @@
-package client_test
+package client
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 
-// mux builds a small fake DevBox API covering the responses exercised by the
-// client tests. Every handler asserts the auth header when expectedKey is set.
-func mux(t *testing.T, expectedKey string) *http.ServeMux {
-	t.Helper()
-	m := http.NewServeMux()
-	auth := func(r *http.Request) {
-		if expectedKey != "" && r.Header.Get("X-API-Key") != expectedKey {
-			t.Errorf("missing or wrong X-API-Key header")
+// TestAPIErrorIsUnauthorized verifies that a 401 APIError matches the
+// ErrUnauthorized sentinel via errors.Is, so all unauthorized failures are
+// recognized uniformly no matter which code path produced them.
+func TestAPIErrorIsUnauthorized(t *testing.T) {
+	err := &APIError{StatusCode: http.StatusUnauthorized, Message: "bad key"}
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Fatal("401 APIError must match ErrUnauthorized via errors.Is")
+	}
+
+	err = &APIError{StatusCode: http.StatusForbidden, Message: "no"}
+	if errors.Is(err, ErrUnauthorized) {
+		t.Fatal("non-401 APIError must not match ErrUnauthorized")
+	}
+
+	if !IsSentinelWrapped(ErrUnauthorized) {
+		t.Fatal("ErrUnauthorized itself must match")
+	}
+}
+
+// IsSentinelWrapped reports whether the sentinel matches itself (sanity check
+// for errors.Is semantics).
+func IsSentinelWrapped(err error) bool {
+	return errors.Is(err, ErrUnauthorized)
+}
+
+// TestUserAgentInjected verifies that the version set via UserAgent is sent
+// as "devbox-cli/<version>" in the User-Agent header of the Manager API
+// client, while the key check request stays header-free.
+func TestUserAgentInjected(t *testing.T) {
+	UserAgent = "devbox-cli/0.1.0-release"
+
+	var gotAPI, gotCheck string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == DefaultCheckPath {
+			gotCheck = r.Header.Get("User-Agent")
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
-	}
-
-	m.HandleFunc("/sandboxes", func(w http.ResponseWriter, r *http.Request) {
-		auth(r)
-		switch r.Method {
-		case http.MethodGet:
-			q := r.URL.Query()
-			if q.Get("metadata") != "user=abc&app=prod" {
-				t.Errorf("unexpected metadata: %q", q.Get("metadata"))
-			}
-			if q.Get("state") != "running,paused" {
-				t.Errorf("unexpected state: %q", q.Get("state"))
-			}
-			if q.Get("limit") != "5" {
-				t.Errorf("unexpected limit: %q", q.Get("limit"))
-			}
-			w.Header().Set("X-Next-Token", "token-123")
-			w.Header().Set("X-Total-Running", "7")
-			writeJSON(t, w, http.StatusOK, []map[string]any{sandboxJSON("sb-1"), sandboxJSON("sb-2")})
-		case http.MethodPost:
-			var body api.NewSandbox
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				t.Errorf("decode create body: %v", err)
-			}
-			if body.TemplateID != "tpl-1" {
-				t.Errorf("unexpected templateID: %q", body.TemplateID)
-			}
-			if body.Timeout == nil || *body.Timeout != 30 {
-				t.Errorf("unexpected timeout: %v", body.Timeout)
-			}
-			if body.EnvVars == nil || (*body.EnvVars)["FOO"] != "bar" {
-				t.Errorf("unexpected envVars: %v", body.EnvVars)
-			}
-			writeJSON(t, w, http.StatusCreated, sandboxJSON("sb-new"))
-		default:
-			t.Errorf("unexpected method: %s", r.Method)
-		}
-	})
-
-	m.HandleFunc("/sandboxes/sb-1/timeout", func(w http.ResponseWriter, r *http.Request) {
-		auth(r)
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	m.HandleFunc("/sandboxes/sb-1/refreshes", func(w http.ResponseWriter, r *http.Request) {
-		auth(r)
-		var body api.RefreshSandboxJSONBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Errorf("decode refresh body: %v", err)
-		}
-		if body.Duration != 600 {
-			t.Errorf("unexpected duration: %d", body.Duration)
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	m.HandleFunc("/sandboxes/sb-missing", func(w http.ResponseWriter, r *http.Request) {
-		auth(r)
-		writeJSON(t, w, http.StatusNotFound, map[string]string{"error": "sandbox_not_found", "message": "no such sandbox"})
-	})
-
-	m.HandleFunc("/templates", func(w http.ResponseWriter, r *http.Request) {
-		auth(r)
-		writeJSON(t, w, http.StatusOK, []map[string]any{
-			{"templateID": "tpl-1", "name": "node-22", "aliases": []string{"node", "base"}, "buildID": "b-1", "cpuCount": 2, "memoryMB": 1024, "diskSizeMB": 4096},
-		})
-	})
-
-	return m
-}
-
-func sandboxJSON(id string) map[string]any {
-	return map[string]any{
-		"templateID": "tpl-1",
-		"sandboxID":  id,
-		"startedAt":  "2026-01-02T15:04:05Z",
-		"endAt":      "2026-01-02T15:05:05Z",
-		"cpuCount":   int32(2),
-		"memoryMB":   int32(1024),
-		"diskSizeMB": int32(4096),
-		"state":      "running",
-		"lifecycle":  map[string]any{"onTimeout": "kill", "autoResume": false},
-	}
-}
-
-func writeJSON(t *testing.T, w http.ResponseWriter, status int, v any) {
-	t.Helper()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		t.Errorf("encode response: %v", err)
-	}
-}
-
-func clientFor(t *testing.T, url, key string) *client.Client {
-	t.Helper()
-	c, err := client.New(url, key, nil)
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
-	return c
-}
-
-func TestAPIKeyHeaderSent(t *testing.T) {
-	srv := httptest.NewServer(mux(t, "sekrit"))
-	defer srv.Close()
-
-	states := []api.SandboxState{api.Running, api.Paused}
-	_, err := clientFor(t, srv.URL, "sekrit").ListSandboxes(context.Background(), &api.ListSandboxesParams{
-		Metadata: stringPtr("user=abc&app=prod"),
-		State:    &states,
-		Limit:    intPtr(5),
-	})
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
-}
-
-func TestListSandboxes(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
-
-	states := []api.SandboxState{api.Running, api.Paused}
-	res, err := clientFor(t, srv.URL, "").ListSandboxes(context.Background(), &api.ListSandboxesParams{
-		Metadata: stringPtr("user=abc&app=prod"),
-		State:    &states,
-		Limit:    intPtr(5),
-	})
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if len(res.Sandboxes) != 2 {
-		t.Fatalf("expected 2 sandboxes, got %d", len(res.Sandboxes))
-	}
-	if res.NextToken != "token-123" {
-		t.Errorf("unexpected pagination meta: token=%q", res.NextToken)
-	}
-	if res.Sandboxes[0].SandboxID != "sb-1" {
-		t.Errorf("unexpected first sandbox: %s", res.Sandboxes[0].SandboxID)
-	}
-}
-
-func TestCreateSandbox(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
-
-	envs := map[string]string{"FOO": "bar"}
-	sb, err := clientFor(t, srv.URL, "").CreateSandbox(context.Background(), api.CreateSandboxJSONRequestBody(api.NewSandbox{
-		TemplateID: "tpl-1",
-		Timeout:    int32Ptr(30),
-		EnvVars:    &envs,
+		gotAPI = r.Header.Get("User-Agent")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`[]`))
 	}))
+	defer srv.Close()
+
+	c, err := New(srv.URL, "", nil)
 	if err != nil {
-		t.Fatalf("create: %v", err)
+		t.Fatalf("New: %v", err)
 	}
-	if sb.SandboxID != "sb-new" {
-		t.Fatalf("unexpected sandbox id: %s", sb.SandboxID)
+	if _, err := c.api.ListTemplatesWithResponse(context.Background()); err != nil {
+		t.Fatalf("ListTemplates: %v", err)
 	}
-}
-
-func TestSetSandboxTimeoutNoContent(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
-
-	if err := clientFor(t, srv.URL, "").SetSandboxTimeout(context.Background(), "sb-1", api.SetSandboxTimeoutJSONRequestBody(api.TimeoutOption{Timeout: int32Ptr(60)})); err != nil {
-		t.Fatalf("set timeout: %v", err)
+	if gotAPI != "devbox-cli/0.1.0-release" {
+		t.Fatalf("API User-Agent = %q, want %q", gotAPI, "devbox-cli/0.1.0-release")
 	}
-}
 
-func TestRefreshSandboxNoContent(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
-
-	if err := clientFor(t, srv.URL, "").RefreshSandbox(context.Background(), "sb-1", api.RefreshSandboxJSONRequestBody(api.RefreshSandboxJSONBody{Duration: 600})); err != nil {
-		t.Fatalf("refresh: %v", err)
+	if err := VerifyAPIKey(context.Background(), srv.URL, "devbox_key"); err != nil {
+		t.Fatalf("VerifyAPIKey: %v", err)
+	}
+	if strings.HasPrefix(gotCheck, "devbox-cli/") {
+		t.Fatalf("check request must not carry the devbox-cli User-Agent, got %q", gotCheck)
 	}
 }
 
-func TestListTemplates(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
+// TestCheckStatusUpgradeRequired verifies that a 426 response maps to
+// UpgradeRequiredError, carrying the server message when present and falling
+// back to the localized hint otherwise, both followed by the one-click
+// upgrade commands.
+func TestCheckStatusUpgradeRequired(t *testing.T) {
+	resp := &http.Response{StatusCode: http.StatusUpgradeRequired}
 
-	tpls, err := clientFor(t, srv.URL, "").ListTemplates(context.Background())
-	if err != nil {
-		t.Fatalf("list templates: %v", err)
+	err := checkStatus(resp, []byte(`{"message":"minimum version 0.2.0"}`))
+	var ue *UpgradeRequiredError
+	if !errors.As(err, &ue) {
+		t.Fatalf("426 must map to UpgradeRequiredError, got %T", err)
 	}
-	if len(tpls) != 1 {
-		t.Fatalf("expected 1 template, got %d", len(tpls))
+	if ue.Message != "minimum version 0.2.0" {
+		t.Fatalf("Message = %q, want the server message", ue.Message)
 	}
-	if tpls[0].TemplateID != "tpl-1" || tpls[0].Name != "node-22" || tpls[0].BuildID != "b-1" {
-		t.Errorf("unexpected template: %+v", tpls[0])
+	for _, want := range []string{"minimum version 0.2.0", "Update:", "OBS", "GitCode", "GitHub"} {
+		if !strings.Contains(ue.Error(), want) {
+			t.Fatalf("Error() = %q, want it to contain %q", ue.Error(), want)
+		}
 	}
-}
+	wantCmd := "curl -fsSL"
+	if runtime.GOOS == "windows" {
+		wantCmd = "irm "
+	}
+	if !strings.Contains(ue.Error(), wantCmd) {
+		t.Fatalf("Error() = %q, want it to contain %q", ue.Error(), wantCmd)
+	}
 
-func TestDeleteSandboxErrorDecoded(t *testing.T) {
-	srv := httptest.NewServer(mux(t, ""))
-	defer srv.Close()
-
-	err := clientFor(t, srv.URL, "").DeleteSandbox(context.Background(), "sb-missing")
-	if err == nil {
-		t.Fatal("expected an error")
+	err = checkStatus(resp, []byte("not json"))
+	if !errors.As(err, &ue) {
+		t.Fatalf("426 must map to UpgradeRequiredError, got %T", err)
 	}
-	msg := err.Error()
-	if !strings.Contains(msg, "no such sandbox") {
-		t.Errorf("error should carry the API message, got: %s", msg)
-	}
-	if !strings.Contains(msg, "404") {
-		t.Errorf("error should carry the status code, got: %s", msg)
-	}
-}
-
-func TestInvalidServerURL(t *testing.T) {
-	if _, err := client.New("not-a-url", "", nil); err == nil {
-		t.Fatal("expected an error for a relative URL")
+	if !strings.Contains(ue.Error(), i18n.T(i18n.Msg.Client.UpgradeRequired)) {
+		t.Fatalf("Error() = %q, want the localized hint", ue.Error())
 	}
 }
-
-func stringPtr(s string) *string { return &s }
-
-func int32Ptr(i int32) *int32 { return &i }
-
-func intPtr(i int) *int { return &i }

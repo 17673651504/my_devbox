@@ -323,10 +323,11 @@ prompt_clean_old_data() {
 }
 
 # ---------------------------------------------------------------------------
-# download_binary - download and extract the tar.gz package from the remote.
+# download_binary - download the tar.gz package and checksums.txt from the remote.
 #
 # Source: explicit -u wins, otherwise DEFAULT_ARTIFACT_URL (baked per channel).
-# Returns the extracted binary path (checksums.txt is alongside, for verify_checksum).
+# Returns the downloaded tarball path (checksums.txt is alongside, for verify_checksum).
+# Extraction is deferred to extract_binary, after verify_checksum passes.
 # ---------------------------------------------------------------------------
 download_binary() {
     local url="$1" output_dir="$2"
@@ -345,8 +346,19 @@ download_binary() {
     verbose "Downloading ${checksums_url} ..."
     http_get "${checksums_url}" "${output_dir}/checksums.txt" besteffort
 
-    verbose "Extracting ${tarball_name} ..."
-    tar xzf "${local_tarball}" -C "${output_dir}"
+    echo "${local_tarball}"
+}
+
+# ---------------------------------------------------------------------------
+# extract_binary - extract the verified tar.gz package and return the binary path
+# ---------------------------------------------------------------------------
+extract_binary() {
+    local tarball_file="$1"
+    local output_dir
+    output_dir=$(dirname "${tarball_file}")
+
+    verbose "Extracting $(basename "${tarball_file}") ..."
+    tar xzf "${tarball_file}" -C "${output_dir}"
 
     local binary_name_inside
     binary_name_inside=$(get_binary_name_inside)
@@ -354,14 +366,13 @@ download_binary() {
 }
 
 # ---------------------------------------------------------------------------
-# verify_checksum - verify the SHA256 hash of the binary
+# verify_checksum - verify the SHA256 hash of the downloaded tar.gz archive
 # ---------------------------------------------------------------------------
 verify_checksum() {
-    local binary_file="$1"
+    local tarball_file="$1"
     # GoReleaser artifacts: checksums.txt is at the Release root; the tar.gz is the checksum target
-    local tarball_file="${binary_file}.tar.gz"
     local checksums_file
-    checksums_file="$(dirname "${binary_file}")/checksums.txt"
+    checksums_file="$(dirname "${tarball_file}")/checksums.txt"
 
     if [[ "${SKIP_CHECKSUM}" == true ]]; then
         warn "Skipping checksum verification"
@@ -506,11 +517,16 @@ main() {
 
     verbose "Downloading from remote repository: ${ARTIFACT_URL}"
 
-    local binary_file
-    binary_file=$(download_binary "${ARTIFACT_URL}" "${download_dir}")
-    [[ ! -f "${binary_file}" ]] && error "Failed to download binary"
+    local tarball_file
+    tarball_file=$(download_binary "${ARTIFACT_URL}" "${download_dir}")
+    [[ ! -f "${tarball_file}" ]] && error "Failed to download binary"
 
-    verify_checksum "${binary_file}"
+    verify_checksum "${tarball_file}"
+
+    local binary_file
+    binary_file=$(extract_binary "${tarball_file}")
+    [[ ! -f "${binary_file}" ]] && error "Failed to extract binary"
+
     install_binary "${binary_file}"
     add_to_path
     verify_installation

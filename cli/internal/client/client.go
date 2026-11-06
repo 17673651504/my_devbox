@@ -22,6 +22,8 @@ import (
 // by the server (HTTP 401).
 var ErrUnauthorized = errors.New(i18n.T(i18n.Msg.Client.Unauthorized))
 
+var UserAgent = "devbox-cli/dev"
+
 const (
 	// headerAPIKey is the auth header of the DevBox Manager API.
 	headerAPIKey = "X-API-Key"
@@ -46,6 +48,32 @@ type APIError struct {
 // Error implements the error interface.
 func (e *APIError) Error() string {
 	return fmt.Sprintf(i18n.T(i18n.Msg.Client.APIErrorFormat), e.StatusCode, http.StatusText(e.StatusCode), e.Message)
+}
+
+// Is reports whether the error matches the given sentinel: an APIError with
+// status 401 matches ErrUnauthorized, so every unauthorized failure can be
+// recognized uniformly via errors.Is regardless of which code path built it.
+func (e *APIError) Is(target error) bool {
+	return target == ErrUnauthorized && e.StatusCode == http.StatusUnauthorized
+}
+
+// UpgradeRequiredError is returned when the server rejects a request with
+// HTTP 426 because the CLI version is below the required minimum. Retrying
+// cannot succeed; the user must upgrade the CLI.
+type UpgradeRequiredError struct {
+	// Message is the server-provided explanation, empty when the response
+	// carries no parseable message.
+	Message string
+}
+
+// Error returns the server explanation followed by the one-click upgrade
+// commands, falling back to the localized hint when the server sent none.
+func (e *UpgradeRequiredError) Error() string {
+	msg := e.Message
+	if msg == "" {
+		msg = i18n.T(i18n.Msg.Client.UpgradeRequired)
+	}
+	return fmt.Sprintf("\n%s\n%s\n%s\n", msg, i18n.T(i18n.Msg.Client.UpdateLabel), installCommands())
 }
 
 // New builds a Client authenticated against the given server. An empty
@@ -76,6 +104,7 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 		server,
 		api.WithHTTPClient(httpClient),
 		api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+			req.Header.Set("User-Agent", UserAgent)
 			if apiKey != "" {
 				req.Header.Set(headerAPIKey, apiKey)
 			}
@@ -94,16 +123,19 @@ func (c *Client) BaseURL() string {
 }
 
 // checkStatus returns an *APIError derived from the DevBox error schema when
-// the HTTP response is not a 2xx.
+// the HTTP response is not a 2xx. A 426 response maps to UpgradeRequiredError.
 func checkStatus(resp *http.Response, body []byte) error {
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
 
+	if resp.StatusCode == http.StatusUpgradeRequired {
+		return &UpgradeRequiredError{Message: serverMessage(body)}
+	}
+
 	apiErr := &APIError{StatusCode: resp.StatusCode}
-	var e api.Error
-	if err := json.Unmarshal(body, &e); err == nil && e.Message != "" {
-		apiErr.Message = e.Message
+	if msg := serverMessage(body); msg != "" {
+		apiErr.Message = msg
 		return apiErr
 	}
 	// Non-JSON or unexpected body: echo a trimmed excerpt for debuggability.
@@ -113,4 +145,14 @@ func checkStatus(resp *http.Response, body []byte) error {
 	}
 	apiErr.Message = i18n.T(i18n.Msg.Client.ErrorResponsePrefix) + msg
 	return apiErr
+}
+
+// serverMessage extracts the human-readable message from a DevBox error body
+// ({message: ...}), returning empty for non-JSON or message-less bodies.
+func serverMessage(body []byte) string {
+	var e api.Error
+	if err := json.Unmarshal(body, &e); err == nil && e.Message != "" {
+		return e.Message
+	}
+	return ""
 }

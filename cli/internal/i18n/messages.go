@@ -127,6 +127,8 @@ type TemplateMessages struct {
 
 type ClientMessages struct {
 	Unauthorized           Message
+	UpgradeRequired        Message
+	UpdateLabel            Message
 	InvalidServerURL       Message
 	InvalidServerURLScheme Message
 	InvalidServerURLHost   Message
