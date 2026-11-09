@@ -28,7 +28,7 @@ var Version = "dev"
 var RootCmd = &cobra.Command{
 	Use:     "devbox",
 	Short:   i18n.T(i18n.Msg.Common.RootShort),
-	Long:    i18n.T(i18n.Msg.Common.RootLong) + config.DefaultServer + "\n",
+	Long:    i18n.T(i18n.Msg.Common.RootLong),
 	Version: Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if f := cmd.Flags().Lookup("format"); f != nil {
