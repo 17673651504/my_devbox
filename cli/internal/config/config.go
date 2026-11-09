@@ -32,11 +32,6 @@ import (
 // intentionally not configurable at runtime.
 var DefaultServer = "https://devbox-test.developer.myhuaweicloud.com"
 
-// AuthCheckDomain is the domain of the API key verification endpoint
-// ({AuthCheckDomain}/v1/api-keys/check). Build-time injectable, not
-// runtime-configurable.
-var AuthCheckDomain = "https://bridge.developer.myhuaweicloud.com"
-
 // ApikeyPagePath is the API key management page path on the login portal
 // ({LoginURL}{ApikeyPagePath}), shown in login hints when no browser is
 // available. The page distinguishes products via the origin parameter.

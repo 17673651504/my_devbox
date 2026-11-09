@@ -13,7 +13,7 @@ import (
 
 const (
 	// DefaultCheckPath is the API key validation endpoint path on the bridge
-	// domain ({AuthCheckDomain}/v1/api-keys/check).
+	// domain ({DefaultServer}/v1/api-keys/check).
 	DefaultCheckPath = "/v1/api-keys/check"
 )
 

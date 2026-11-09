@@ -15,14 +15,9 @@ API_SERVER_URL ?= https://devbox-test.developer.myhuaweicloud.com
 # Override per build: make build LOGIN_URL=https://...
 LOGIN_URL ?= https://devstation.connect.huaweicloud.com
 
-# Domain of the API key verification endpoint.
-# Override per build: make build AUTH_CHECK_DOMAIN=https://...
-AUTH_CHECK_DOMAIN ?= https://bridge.developer.myhuaweicloud.com
-
 LDFLAGS := -X github.com/huaweicloud/devspace-devbox/cli/cmd.Version=$(VERSION) \
 	-X github.com/huaweicloud/devspace-devbox/cli/internal/config.DefaultServer=$(API_SERVER_URL) \
-	-X github.com/huaweicloud/devspace-devbox/cli/internal/config.LoginURL=$(LOGIN_URL) \
-	-X github.com/huaweicloud/devspace-devbox/cli/internal/config.AuthCheckDomain=$(AUTH_CHECK_DOMAIN)
+	-X github.com/huaweicloud/devspace-devbox/cli/internal/config.LoginURL=$(LOGIN_URL)
 
 .PHONY: build
 build:

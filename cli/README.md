@@ -36,7 +36,7 @@ devbox auth login                                   # 复用本地 Key（环境�
 devbox auth logout                                  # 清除 API Key 与用户信息
 ```
 
-登录凭据解析优先级：命令行 flag > `HW_DEVBOX_API_KEY` 环境变量 > keyring/配置文件。API Key 的校验地址为 `{AuthCheckDomain}/v1/api-keys/check`（构建期注入）。
+登录凭据解析优先级：命令行 flag > `HW_DEVBOX_API_KEY` 环境变量 > keyring/配置文件。API Key 的校验地址为 `{API_SERVER_URL}/v1/api-keys/check`，与其他 API 使用同一域名（构建期注入）。
 
 ### 沙箱管理
 

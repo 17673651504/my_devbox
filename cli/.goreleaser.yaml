@@ -42,9 +42,8 @@ builds:
     ldflags:
       - -s -w
       - -X github.com/huaweicloud/devspace-devbox/cli/cmd.Version={{ .Version }}
-      - -X github.com/huaweicloud/devspace-devbox/cli/internal/config.DefaultServer=https://devbox-test.developer.myhuaweicloud.com
+      - -X github.com/huaweicloud/devspace-devbox/cli/internal/config.DefaultServer=https://devbox.developer.myhuaweicloud.com
       - -X github.com/huaweicloud/devspace-devbox/cli/internal/config.LoginURL=https://devstation.connect.huaweicloud.com
-      - -X github.com/huaweicloud/devspace-devbox/cli/internal/config.AuthCheckDomain=https://bridge.developer.myhuaweicloud.com
     flags:
       - -trimpath
     buildmode: pie

@@ -314,7 +314,7 @@ func BrowserLogin(ctx context.Context) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Auth.LoginFailed)+"%w", err)
 	}
 
-	if err := VerifyAPIKey(ctx, config.AuthCheckDomain, cred.APIKey); err != nil {
+	if err := VerifyAPIKey(ctx, config.DefaultServer, cred.APIKey); err != nil {
 		return LoginVerifyError(i18n.T(i18n.Msg.Auth.LoginKeyInvalid), err)
 	}
 	if err := StoreCredential(&cred, userInfo); err != nil {
