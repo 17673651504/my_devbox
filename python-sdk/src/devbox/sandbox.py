@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import httpx
 import re
 import time
 from collections.abc import Mapping, Sequence
@@ -8,6 +7,8 @@ from dataclasses import replace
 from types import TracebackType
 from typing import Any, Literal
 from urllib.parse import quote
+
+import httpx
 
 from ._transport import AsyncTransport, SyncTransport
 from .commands import AsyncCommands, Commands
@@ -53,6 +54,7 @@ class Sandboxes:
         metadata: Mapping[str, str] | None = None,
         build_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
+        network: Mapping[str, bool] | None = None,
     ) -> Sandbox:
         payload = self._transport.request(
             "POST",
@@ -64,6 +66,7 @@ class Sandboxes:
                 metadata,
                 build_id,
                 lifecycle,
+                network,
             ),
         )
         info, connection = _sandbox_payload(payload)
@@ -140,6 +143,7 @@ class AsyncSandboxes:
         metadata: Mapping[str, str] | None = None,
         build_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
+        network: Mapping[str, bool] | None = None,
     ) -> AsyncSandbox:
         payload = await self._transport.request(
             "POST",
@@ -151,6 +155,7 @@ class AsyncSandboxes:
                 metadata,
                 build_id,
                 lifecycle,
+                network,
             ),
         )
         info, connection = _sandbox_payload(payload)
@@ -253,6 +258,7 @@ class Sandbox:
         metadata: Mapping[str, str] | None = None,
         build_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
+        network: Mapping[str, bool] | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
         gateway_url: str | None = None,
@@ -279,6 +285,7 @@ class Sandbox:
                 metadata=metadata,
                 build_id=build_id,
                 lifecycle=lifecycle,
+                network=network,
             )
         except BaseException:
             transport.close()
@@ -357,13 +364,17 @@ class Sandbox:
             json_body={"duration": _checked_timeout(duration)},
         )
 
-    def pause(self) -> None:
+    def pause(
+        self, *, memory: bool | None = None, mode: Literal["full", "filesystem"] | None = None
+    ) -> None:
         """Save memory and disk, then close local runtime connections.
 
         Manager does not expire paused sandbox records. Context manager exit
         still deletes it; use ``close()`` to leave it available for resume.
         """
-        self._control.request("POST", f"/sandboxes/{_id(self.sandbox_id)}/pause")
+        self._control.request(
+            "POST", f"/sandboxes/{_id(self.sandbox_id)}/pause", json_body=_pause_body(memory, mode)
+        )
         self._info = replace(self._info, state=SandboxState.PAUSED)
         self._close_gateway()
 
@@ -518,6 +529,7 @@ class AsyncSandbox:
         metadata: Mapping[str, str] | None = None,
         build_id: str | None = None,
         lifecycle: SandboxLifecycle | None = None,
+        network: Mapping[str, bool] | None = None,
         api_key: str | None = None,
         api_url: str | None = None,
         gateway_url: str | None = None,
@@ -544,6 +556,7 @@ class AsyncSandbox:
                 metadata=metadata,
                 build_id=build_id,
                 lifecycle=lifecycle,
+                network=network,
             )
         except BaseException:
             await transport.close()
@@ -620,9 +633,13 @@ class AsyncSandbox:
             json_body={"duration": _checked_timeout(duration)},
         )
 
-    async def pause(self) -> None:
+    async def pause(
+        self, *, memory: bool | None = None, mode: Literal["full", "filesystem"] | None = None
+    ) -> None:
         """Save memory and disk; context manager exit still deletes the sandbox."""
-        await self._control.request("POST", f"/sandboxes/{_id(self.sandbox_id)}/pause")
+        await self._control.request(
+            "POST", f"/sandboxes/{_id(self.sandbox_id)}/pause", json_body=_pause_body(memory, mode)
+        )
         self._info = replace(self._info, state=SandboxState.PAUSED)
         await self._close_gateway()
 
@@ -784,6 +801,7 @@ def _create_body(
     metadata: Mapping[str, str] | None,
     build_id: str | None,
     lifecycle: SandboxLifecycle | None,
+    network: Mapping[str, bool] | None = None,
 ) -> dict[str, object]:
     if not template.strip():
         raise ValueError("template must not be blank")
@@ -806,7 +824,29 @@ def _create_body(
             "onTimeout": lifecycle.on_timeout,
             "autoResume": lifecycle.auto_resume,
         }
+    if network is not None:
+        if not isinstance(network, Mapping) or set(network) - {"allow_public_traffic"}:
+            raise ValueError("network only supports allow_public_traffic")
+        if "allow_public_traffic" in network and not isinstance(
+            network["allow_public_traffic"], bool
+        ):
+            raise ValueError("network.allow_public_traffic must be a boolean")
+        body["network"] = (
+            {"allowPublicTraffic": network["allow_public_traffic"]}
+            if "allow_public_traffic" in network
+            else {}
+        )
     return body
+
+
+def _pause_body(memory: bool | None, mode: str | None) -> dict[str, bool] | None:
+    if memory is False or mode == "filesystem":
+        raise ValueError("Only full memory snapshots are supported")
+    if memory is not None and not isinstance(memory, bool):
+        raise ValueError("memory must be a boolean")
+    if mode is not None and mode != "full":
+        raise ValueError("mode must be full")
+    return {"memory": True} if memory is not None or mode is not None else None
 
 
 def _sandbox_payload(value: object) -> tuple[SandboxInfo, SandboxConnection]:
@@ -869,8 +909,8 @@ def _mapping(value: object) -> Mapping[str, Any]:
 
 
 def _checked_timeout(timeout: int) -> int:
-    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 10 <= timeout <= 86400:
-        raise ValueError("timeout must be an integer between 10 and 86400 seconds")
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 86400:
+        raise ValueError("timeout must be an integer between 1 and 86400 seconds")
     return timeout
 
 

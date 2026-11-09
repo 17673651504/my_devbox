@@ -12,6 +12,34 @@ describe("sandboxes", () => {
     agent = undefined;
   });
 
+  it.each([true, false])("serializes public traffic %s and full pause", async (publicTraffic) => {
+    agent = mockAgent();
+    const pool = agent.get("https://manager.example.test");
+    pool.intercept({ path: "/sandboxes", method: "POST" }).reply(({ body }) => {
+      expect(JSON.parse(String(body)).network).toEqual({ allowPublicTraffic: publicTraffic });
+      return { statusCode: 201, data: sandboxResponse };
+    });
+    pool.intercept({ path: "/sandboxes/sbx-1/pause", method: "POST" }).reply(({ body }) => {
+      expect(JSON.parse(String(body))).toEqual({ memory: true });
+      return { statusCode: 204 };
+    });
+    const client = new DevBox({
+      apiKey: "key",
+      apiUrl: "https://manager.example.test",
+      dispatcher: agent,
+    });
+    try {
+      const sandbox = await client.sandboxes.create("default", {
+        network: { allowPublicTraffic: publicTraffic },
+      });
+      await sandbox.pause({ mode: "full" });
+      await expect(sandbox.pause({ memory: false })).rejects.toThrow("full memory");
+      agent.assertNoPendingInterceptors();
+    } finally {
+      await client.close();
+    }
+  });
+
   it("pauses and resumes with fresh runtime credentials", async () => {
     agent = mockAgent();
     const manager = agent.get("https://manager.example.test");
