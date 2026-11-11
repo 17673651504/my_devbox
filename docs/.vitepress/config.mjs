@@ -11,7 +11,7 @@ export default defineConfig({
       { text: "快速入门", link: "/" },
       { text: "API 参考", link: "/api/" },
       { text: "SDK 参考", link: "/reference/sdk" },
-      { text: "CLI", link: "/cli/" },
+      { text: "CLI 参考", link: "/cli/" },
     ],
     sidebar: [
       {
