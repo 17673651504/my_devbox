@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green.svg" alt="License" /></a>
+  <a href="LICENSE"><img src="https://badgen.net/static/License/Apache-2.0/blue" alt="License" /></a>
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB.svg" alt="Python" />
   <img src="https://img.shields.io/badge/Node.js-20.18.1%2B-339933.svg" alt="Node.js" />
   <img src="https://img.shields.io/badge/platform-Linux%20sandbox-lightgrey.svg" alt="Platform" />
@@ -49,7 +49,7 @@ Sandbox
 
 - **管理面**：`X-API-Key` 鉴权，用于创建、查询、暂停、恢复、删除沙箱与列出模板。
 - **数据面**：使用创建 / 连接响应中的 `domain` 与 `connectToken`，向沙箱发起命令、文件、终端与 Git 请求。
-- **生命周期**：沙箱按存活时间到期销毁，可暂停保留状态（当前保留期 24 小时）后恢复，也可主动 `kill()` 删除。
+- **生命周期**：沙箱按存活时间到期销毁，可暂停保存状态后恢复，也可主动 `kill()` 删除。
 
 ## 快速开始
 
