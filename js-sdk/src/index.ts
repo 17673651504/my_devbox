@@ -40,9 +40,9 @@ export {
 export type { PtyStartOptions } from "./pty.js";
 export {
   type ConnectSandboxOptions,
-  type PauseSandboxOptions,
   type CreateSandboxOptions,
   type ListSandboxesOptions,
+  type PauseSandboxOptions,
   Sandbox,
 } from "./sandbox.js";
 export { VERSION } from "./version.js";

@@ -324,19 +324,14 @@ async function validateLifecycle(client, sandbox, validator) {
     await persistence();
   };
   const liveUpgrade = async () => {
-    const before = await step(
-      "envd.health() | read the EnvD version before pause",
-      () => sandbox.envd.health(),
+    const before = await step("envd.health() | read the EnvD version before pause", () =>
+      sandbox.envd.health(),
     );
 
     const pauseStarted = performance.now();
-    await step("sandbox.pause() | capture the running EnvD state", () =>
-      sandbox.pause(),
-    );
+    await step("sandbox.pause() | capture the running EnvD state", () => sandbox.pause());
     const pauseElapsed = (performance.now() - pauseStarted) / 1000;
-    await step("sandbox.close() | resume through a fresh SDK handle", () =>
-      sandbox.close(),
-    );
+    await step("sandbox.close() | resume through a fresh SDK handle", () => sandbox.close());
 
     const resumeStarted = performance.now();
     const connected = await step(
@@ -346,9 +341,8 @@ async function validateLifecycle(client, sandbox, validator) {
     const resumeElapsed = (performance.now() - resumeStarted) / 1000;
     sandbox = connected;
 
-    const after = await step(
-      "envd.health() | read the EnvD version after resume",
-      () => sandbox.envd.health(),
+    const after = await step("envd.health() | read the EnvD version after resume", () =>
+      sandbox.envd.health(),
     );
     const upgradeWindow = (performance.now() - pauseStarted) / 1000;
     console.log(
@@ -359,13 +353,9 @@ async function validateLifecycle(client, sandbox, validator) {
     );
 
     if (versionKey(after.envdVersion) === versionKey(before.envdVersion)) {
-      console.log(
-        "    SKIP live upgrade | target EnvD is not newer; verify normal resume instead",
-      );
+      console.log("    SKIP live upgrade | target EnvD is not newer; verify normal resume instead");
     } else if (versionKey(after.envdVersion) < versionKey(before.envdVersion)) {
-      throw new Error(
-        `EnvD was downgraded: ${before.envdVersion} -> ${after.envdVersion}`,
-      );
+      throw new Error(`EnvD was downgraded: ${before.envdVersion} -> ${after.envdVersion}`);
     } else {
       console.log("    CHECK EnvD was upgraded during resume");
       resumeTimings.set("upgraded", [pauseElapsed, resumeElapsed]);
@@ -455,24 +445,23 @@ async function validateLifecycle(client, sandbox, validator) {
             `| resume=${resumeElapsed.toFixed(3)}s ` +
             `| total=${(pauseElapsed + resumeElapsed).toFixed(3)}s`,
         );
-    if (resumeTimings.has("upgraded")) {
-      const [upgradedPause, upgradedResume] = resumeTimings.get("upgraded");
-      const resumeOverhead = upgradedResume - resumeElapsed;
-      const totalOverhead =
-        upgradedPause + upgradedResume - pauseElapsed - resumeElapsed;
-      console.log(
-        "    TIMING resume comparison | upgraded " +
-          `pause=${upgradedPause.toFixed(3)}s resume=${upgradedResume.toFixed(3)}s ` +
-          `total=${(upgradedPause + upgradedResume).toFixed(3)}s` +
-          ` | normal pause=${pauseElapsed.toFixed(3)}s ` +
-          `resume=${resumeElapsed.toFixed(3)}s ` +
-          `total=${(pauseElapsed + resumeElapsed).toFixed(3)}s` +
-          ` | resume overhead=${resumeOverhead >= 0 ? "+" : ""}${resumeOverhead.toFixed(3)}s ` +
-          `(${(resumeOverhead / resumeElapsed * 100).toFixed(1)}%)` +
-          ` | total overhead=${totalOverhead >= 0 ? "+" : ""}${totalOverhead.toFixed(3)}s ` +
-          `(${(totalOverhead / (pauseElapsed + resumeElapsed) * 100).toFixed(1)}%)`,
-      );
-    }
+        if (resumeTimings.has("upgraded")) {
+          const [upgradedPause, upgradedResume] = resumeTimings.get("upgraded");
+          const resumeOverhead = upgradedResume - resumeElapsed;
+          const totalOverhead = upgradedPause + upgradedResume - pauseElapsed - resumeElapsed;
+          console.log(
+            "    TIMING resume comparison | upgraded " +
+              `pause=${upgradedPause.toFixed(3)}s resume=${upgradedResume.toFixed(3)}s ` +
+              `total=${(upgradedPause + upgradedResume).toFixed(3)}s` +
+              ` | normal pause=${pauseElapsed.toFixed(3)}s ` +
+              `resume=${resumeElapsed.toFixed(3)}s ` +
+              `total=${(pauseElapsed + resumeElapsed).toFixed(3)}s` +
+              ` | resume overhead=${resumeOverhead >= 0 ? "+" : ""}${resumeOverhead.toFixed(3)}s ` +
+              `(${((resumeOverhead / resumeElapsed) * 100).toFixed(1)}%)` +
+              ` | total overhead=${totalOverhead >= 0 ? "+" : ""}${totalOverhead.toFixed(3)}s ` +
+              `(${((totalOverhead / (pauseElapsed + resumeElapsed)) * 100).toFixed(1)}%)`,
+          );
+        }
         try {
           equal(connected.sandboxId, sandbox.sandboxId);
           const content = await step("connected.files.readBytes() | same remote filesystem", () =>
@@ -897,7 +886,9 @@ function equal(actual, expected) {
 }
 
 function versionKey(version) {
-  const match = String(version).trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  const match = String(version)
+    .trim()
+    .match(/^v?(\d+)\.(\d+)\.(\d+)$/);
   if (!match) throw new Error(`invalid EnvD semantic version: ${JSON.stringify(version)}`);
   return match.slice(1).map(Number);
 }

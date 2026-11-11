@@ -291,9 +291,7 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         if "upgraded" in resume_timings:
             upgraded_pause, upgraded_resume = resume_timings["upgraded"]
             resume_overhead = upgraded_resume - resume_elapsed
-            total_overhead = (
-                upgraded_pause + upgraded_resume - pause_elapsed - resume_elapsed
-            )
+            total_overhead = upgraded_pause + upgraded_resume - pause_elapsed - resume_elapsed
             print(
                 "    TIMING resume comparison | upgraded"
                 f" pause={upgraded_pause:.3f}s resume={upgraded_resume:.3f}s"
@@ -404,7 +402,10 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
             ("lifecycle.manual_resume", manual_resume),
             ("lifecycle.connect_resume", connect_resume),
             ("lifecycle.gateway_auto_resume", lambda: automatic_resume(fresh_connection=True)),
-            ("lifecycle.gateway_reused_connection", lambda: automatic_resume(fresh_connection=False)),
+            (
+                "lifecycle.gateway_reused_connection",
+                lambda: automatic_resume(fresh_connection=False),
+            ),
         ):
             failures = len(validator.failures)
             validator.verify(name, operation)
@@ -930,7 +931,8 @@ def _version_key(version: str) -> tuple[int, int, int]:
     match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", version.strip())
     if not match:
         raise AssertionError(f"invalid EnvD semantic version: {version!r}")
-    return tuple(int(part) for part in match.groups())
+    major, minor, patch = match.groups()
+    return int(major), int(minor), int(patch)
 
 
 if __name__ == "__main__":
