@@ -13,8 +13,7 @@ import (
 func main() {
 	devboxcmd.RootCmd.Use = filepath.Base(os.Args[0])
 	if err := devboxcmd.RootCmd.Execute(); err != nil {
-		var ee *helpers.ExitCodeError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*helpers.ExitCodeError](err); ok {
 			os.Exit(ee.ExitCode)
 		}
 		os.Exit(1)

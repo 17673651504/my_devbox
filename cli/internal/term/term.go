@@ -39,7 +39,7 @@ func New(pc *client.ProcessClient, in, out *os.File, cwd string, envs map[string
 }
 
 // Run starts the remote shell and pumps input/output until the shell exits
-// or the context is cancelled. It returns the end event of the remote shell
+// or the context is canceled. It returns the end event of the remote shell
 // (nil when the session ended without one) and restores the terminal state
 // on return.
 func (s *Session) Run(ctx context.Context) (*process.ProcessEvent_EndEvent, error) {

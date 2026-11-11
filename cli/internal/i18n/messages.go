@@ -105,6 +105,7 @@ type SandboxMessages struct {
 	FlagBuildID         Message
 	FlagOnTimeout       Message
 	FlagAutoResume      Message
+	FlagNetworkPublic   Message
 	FlagDetach          Message
 	FlagCwd             Message
 	FlagStartedAfter    Message

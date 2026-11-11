@@ -43,11 +43,12 @@ const ApikeyPagePath = "/space/devbox/apikey"
 var LoginURL = "https://devstation.connect.huaweicloud.com"
 
 const (
-	// Config keys.
-	KeyAPIKey   = "api_key"
+	// KeyAPIKey is the config-file key holding the API key fallback.
+	KeyAPIKey = "api_key"
+	// KeyUserInfo is the config-file key holding the account metadata.
 	KeyUserInfo = "user_info"
 
-	// Environment variables used as override sources.
+	// EnvAPIKey is the environment variable overriding the stored API key.
 	EnvAPIKey = "HW_DEVBOX_API_KEY"
 
 	configFileName = "config.json"

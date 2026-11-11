@@ -1,5 +1,5 @@
 // Package client is a thin, hand-reviewed wrapper around the generated
-// client (internal/api). It centralises authentication, error
+// client (internal/api). It centralizes authentication, error
 // decoding and pagination meta-headers so that the CLI layers stay focused on
 // command semantics rather than HTTP plumbing.
 package client
@@ -33,8 +33,7 @@ const (
 
 // Client talks to the DevBox Sandbox Manager API.
 type Client struct {
-	api     *api.ClientWithResponses
-	baseURL string
+	api *api.ClientWithResponses
 }
 
 // APIError is an error returned by the DevBox API. It exposes the HTTP status
@@ -114,12 +113,7 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.CreateClientFailed), err)
 	}
-	return &Client{api: apiClient, baseURL: server}, nil
-}
-
-// BaseURL returns the configured server URL.
-func (c *Client) BaseURL() string {
-	return c.baseURL
+	return &Client{api: apiClient}, nil
 }
 
 // checkStatus returns an *APIError derived from the DevBox error schema when

@@ -27,14 +27,15 @@ var sandboxCmd = &cobra.Command{
 
 // sandboxCreateCmd's flag bound variables.
 var (
-	sandboxCreateTimeout    int32
-	sandboxCreateMetadata   []string
-	sandboxCreateEnv        []string
-	sandboxCreateBuildID    string
-	sandboxCreateOnTimeout  string
-	sandboxCreateAutoResume bool
-	sandboxCreateDetach     bool
-	sandboxCreateCwd        string
+	sandboxCreateTimeout            int32
+	sandboxCreateMetadata           []string
+	sandboxCreateEnv                []string
+	sandboxCreateBuildID            string
+	sandboxCreateOnTimeout          string
+	sandboxCreateAutoResume         bool
+	sandboxCreateNetworkAllowPublic bool
+	sandboxCreateDetach             bool
+	sandboxCreateCwd                string
 )
 
 // sandboxCreateCmd implements `devbox sandbox create <templateID>`, corresponding to POST /sandboxes.
@@ -53,7 +54,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateTemplateID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,12 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
 	}
 
-	sb, err := c.CreateSandbox(cmd.Context(), api.CreateSandboxJSONRequestBody(req))
+	// Only submitted when the user explicitly passes the flag; omitted otherwise.
+	if cmd.Flags().Changed("network.allow-public-traffic") {
+		req.Network = &api.SandboxNetwork{AllowPublicTraffic: sandboxCreateNetworkAllowPublic}
+	}
+
+	sb, err := c.CreateSandbox(cmd.Context(), req)
 	if err != nil {
 		return err
 	}
@@ -127,7 +133,7 @@ var sandboxListCmd = &cobra.Command{
 // runSandboxList validates the filters, queries the sandboxes and prints them
 // as a table or JSON.
 func runSandboxList(cmd *cobra.Command, args []string) error {
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -166,7 +172,7 @@ func runSandboxList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(res.Sandboxes) == 0 && out(cmd) == output.FormatText {
-		fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ListEmpty))
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ListEmpty))
 		return nil
 	}
 	// Redact sensitive fields (connectToken/tokenExpiration) from JSON output,
@@ -213,7 +219,7 @@ func runSandboxInfo(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -259,7 +265,7 @@ var sandboxKillCmd = &cobra.Command{
 // runSandboxKill resolves the target sandbox IDs (explicit args or --all
 // filtered by state/metadata) and deletes them one by one.
 func runSandboxKill(cmd *cobra.Command, args []string) error {
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -338,7 +344,7 @@ func runSandboxPause(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -363,7 +369,7 @@ func runSandboxResume(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -375,7 +381,7 @@ func runSandboxResume(cmd *cobra.Command, args []string) error {
 		}
 		opt.Timeout = api.PInt32(sandboxResumeTimeout)
 	}
-	_, err = c.ResumeSandbox(cmd.Context(), args[0], api.ResumeSandboxJSONRequestBody(opt))
+	_, err = c.ResumeSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
 		return err
 	}
@@ -409,7 +415,7 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -421,7 +427,7 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 		}
 		opt.Timeout = api.PInt32(sandboxConnectTimeout)
 	}
-	sb, err := c.ConnectSandbox(cmd.Context(), args[0], api.ConnectSandboxJSONRequestBody(opt))
+	sb, err := c.ConnectSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
 		return err
 	}
@@ -450,7 +456,7 @@ func runSandboxTimeout(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -459,9 +465,9 @@ func runSandboxTimeout(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := c.SetSandboxTimeout(cmd.Context(), args[0], api.SetSandboxTimeoutJSONRequestBody(api.TimeoutOption{
+	if err := c.SetSandboxTimeout(cmd.Context(), args[0], api.TimeoutOption{
 		Timeout: api.PInt32(sandboxTimeoutValue),
-	})); err != nil {
+	}); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.TimeoutSet)+"\n", args[0], sandboxTimeoutValue)
@@ -486,7 +492,7 @@ func runSandboxRefresh(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -530,7 +536,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
 	}
-	c, err := newClient(cmd)
+	c, err := newClient()
 	if err != nil {
 		return err
 	}
@@ -543,12 +549,12 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
 	// Obtain the connection credentials (a paused sandbox is resumed automatically); no sandbox TTL is set.
-	sb, err := c.ConnectSandbox(cmd.Context(), args[0], api.ConnectSandboxJSONRequestBody(api.TimeoutOption{}))
+	sb, err := c.ConnectSandbox(cmd.Context(), args[0], api.TimeoutOption{})
 	if err != nil {
 		return err
 	}
 	if sb.Domain == nil || *sb.Domain == "" {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
+		return helpers.MissingDomainError()
 	}
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
@@ -587,6 +593,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagOnTimeout))
 	sandboxCreateCmd.Flags().BoolVar(&sandboxCreateAutoResume, "lifecycle.autoresume", false,
 		i18n.T(i18n.Msg.Sandbox.FlagAutoResume))
+	sandboxCreateCmd.Flags().BoolVar(&sandboxCreateNetworkAllowPublic, "network.allow-public-traffic", false,
+		i18n.T(i18n.Msg.Sandbox.FlagNetworkPublic))
 	sandboxCreateCmd.Flags().BoolVarP(&sandboxCreateDetach, "detach", "d", false,
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateCwd, "cwd", "c", "",

@@ -351,6 +351,10 @@ func init() {
 				ZH: "启用沙箱自动恢复，需要 --lifecycle.ontimeout pause",
 				EN: "Enable sandbox auto-resume, requires --lifecycle.ontimeout pause",
 			},
+			FlagNetworkPublic: Message{
+				ZH: "是否允许无需鉴权地直接访问该沙箱实例开放的公网 URL",
+				EN: "Allow direct, unauthenticated access to the public URLs exposed by this sandbox instance",
+			},
 			FlagDetach: Message{
 				ZH: "只创建沙箱，不进入终端",
 				EN: "Create the sandbox without connecting to its terminal",

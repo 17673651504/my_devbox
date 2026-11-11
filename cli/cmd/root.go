@@ -63,8 +63,7 @@ func runError(fn func(cmd *cobra.Command, args []string) error) func(cmd *cobra.
 		if err != nil {
 			cmd.SilenceUsage = true
 			cmd.SilenceErrors = true
-			var ee *helpers.ExitCodeError
-			if !errors.As(err, &ee) {
+			if _, ok := errors.AsType[*helpers.ExitCodeError](err); !ok {
 				cmd.PrintErrln(err)
 			}
 		}
@@ -74,17 +73,13 @@ func runError(fn func(cmd *cobra.Command, args []string) error) func(cmd *cobra.
 
 // newClient builds the API client. The API key resolution order: command line
 // override > HW_DEVBOX_API_KEY env var > stored credentials (keyring first, config file fallback),
-// see auth.ReadValidAPIKey. An unregistered --timeout falls back to the default 30s.
-func newClient(cmd *cobra.Command) (*client.Client, error) {
-	timeout, err := cmd.Flags().GetDuration("timeout")
-	if err != nil || timeout == 0 {
-		timeout = 30 * time.Second
-	}
+// see auth.ReadValidAPIKey.
+func newClient() (*client.Client, error) {
 	apiKey := ""
 	if cred := auth.ReadValidAPIKey(); cred != nil {
 		apiKey = cred.APIKey
 	}
-	return client.New(config.DefaultServer, apiKey, &http.Client{Timeout: timeout})
+	return client.New(config.DefaultServer, apiKey, &http.Client{Timeout: 30 * time.Second})
 }
 
 // out returns the format for the command's --format flag (unregistered or invalid falls back to pretty/text).
