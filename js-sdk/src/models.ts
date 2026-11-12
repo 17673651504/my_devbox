@@ -259,9 +259,7 @@ export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
     memCache: numberValue(pick(value, "mem_cache")),
     diskTotal: numberValue(pick(value, "disk_total")),
     diskUsed: numberValue(pick(value, "disk_used")),
-    ...(Array.isArray(oomKills)
-      ? { oomKills: oomKills.map((entry) => parseOomKill(entry)) }
-      : {}),
+    ...(Array.isArray(oomKills) ? { oomKills: oomKills.map((entry) => parseOomKill(entry)) } : {}),
   };
 }
 

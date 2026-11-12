@@ -87,8 +87,8 @@ export function identifier(value: string): string {
 }
 
 export function checkedTimeout(value: number): number {
-  if (!Number.isSafeInteger(value) || value < 10 || value > 86400) {
-    throw new RangeError("timeout must be an integer between 10 and 86400 seconds");
+  if (!Number.isSafeInteger(value) || value < 1 || value > 86400) {
+    throw new RangeError("timeout must be an integer between 1 and 86400 seconds");
   }
   return value;
 }

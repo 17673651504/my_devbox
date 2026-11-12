@@ -35,11 +35,11 @@ devbox tpl ls -f json
 ::: code-group
 
 ```bash [模板 ID]
-devbox sandbox create tpl-devbox-base-4g
+devbox sandbox create <templateID>
 ```
 
 ```bash [别名]
-devbox sandbox create base-4g
+devbox sandbox create <templateAlias>
 ```
 
 :::

@@ -28,7 +28,7 @@ const (
 	FormatJSON Format = "json"
 )
 
-// ParseFormat validates/normalises --format values. "pretty" is an alias of
+// ParseFormat validates/normalizes --format values. "pretty" is an alias of
 // text (e2b-compatible flag values).
 func ParseFormat(s string) (Format, error) {
 	switch strings.ToLower(strings.TrimSpace(s)) {

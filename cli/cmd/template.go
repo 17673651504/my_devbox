@@ -29,7 +29,7 @@ var templateListCmd = &cobra.Command{
 	Short:   i18n.T(i18n.Msg.Template.ListShort),
 	Args:    cobra.NoArgs,
 	RunE: runError(func(cmd *cobra.Command, args []string) error {
-		c, err := newClient(cmd)
+		c, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ var templateListCmd = &cobra.Command{
 			return err
 		}
 		if len(tpls) == 0 && out(cmd) == output.FormatText {
-			fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Template.ListEmpty))
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Template.ListEmpty))
 			return nil
 		}
 		rows := make([][]string, 0, len(tpls))

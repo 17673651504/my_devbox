@@ -8,8 +8,8 @@ func init() {
 				EN: "CLI for the DevBox sandbox manager",
 			},
 			RootLong: Message{
-				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。\n\n配置的解析顺序：\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.huawei/devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
-				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\nIt covers the full sandbox lifecycle (create, list, info, kill, pause,\nresume, connect, exec) and templates.\n\nConfiguration is resolved in this order:\n  1. flags                --api-key (auth login)\n  2. environment          HW_DEVBOX_API_KEY\n  3. config file          ~/.huawei/devbox/config.json\n  4. build-time default   API server URL injected via Makefile, currently ",
+				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。",
+				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\nIt covers the full sandbox lifecycle (create, list, info, kill, pause,\nresume, connect, exec) and templates.",
 			},
 			FlagVerbose: Message{
 				ZH: "打印调试日志（含接口请求/返回）",
@@ -351,6 +351,10 @@ func init() {
 				ZH: "启用沙箱自动恢复，需要 --lifecycle.ontimeout pause",
 				EN: "Enable sandbox auto-resume, requires --lifecycle.ontimeout pause",
 			},
+			FlagNetworkPublic: Message{
+				ZH: "是否允许无需鉴权地直接访问该沙箱实例开放的公网 URL",
+				EN: "Allow direct, unauthenticated access to the public URLs exposed by this sandbox instance",
+			},
 			FlagDetach: Message{
 				ZH: "只创建沙箱，不进入终端",
 				EN: "Create the sandbox without connecting to its terminal",
@@ -418,6 +422,14 @@ func init() {
 			Unauthorized: Message{
 				ZH: "API Key 无效或已被禁用",
 				EN: "api key is invalid or disabled",
+			},
+			UpgradeRequired: Message{
+				ZH: "当前 CLI 版本过低，请升级后重试",
+				EN: "your CLI version is too old, please upgrade and retry",
+			},
+			UpdateLabel: Message{
+				ZH: "更新方式：",
+				EN: "Update:",
 			},
 			InvalidServerURL: Message{
 				ZH: "无效的服务器地址 %q：%w",

@@ -144,13 +144,19 @@ func BuildRemoteCommand(args []string) (string, error) {
 	return strings.Join(quoted, " "), nil
 }
 
+// MissingDomainError returns the localized error for a connect response that
+// carries no sandbox domain.
+func MissingDomainError() error {
+	return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
+}
+
 // RunTerminalSession validates the connection info from the sandbox response
 // and opens the interactive terminal, printing the connecting/closing notices
 // to msgs. The raw session I/O flows through in/out (typically os.Stdin and
 // os.Stdout).
 func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, sb *api.Sandbox, cwd string, envs map[string]string) error {
 	if sb.Domain == nil || *sb.Domain == "" {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
+		return MissingDomainError()
 	}
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
@@ -186,6 +192,8 @@ func (e *ExitCodeError) Error() string {
 // ExecForeground runs in the foreground: forwards the remote stdout/stderr locally, waits for the process to exit
 // and returns the remote exit code as the local exit code.
 func ExecForeground(ctx context.Context, stdout, stderr io.Writer, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
+	defer func() { _ = stream.Close() }()
+
 	var pid uint32
 	var exitCode int32 = 1
 	started := false
@@ -222,7 +230,7 @@ func ExecForeground(ctx context.Context, stdout, stderr io.Writer, pc *client.Pr
 
 // ExecBackground runs in the background: waits for the first start event to get the PID, forwards piped input (if any),
 // prints the PID and exits immediately; the remote process keeps running.
-func ExecBackground(ctx context.Context, stdout, stderr io.Writer, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
+func ExecBackground(ctx context.Context, _ io.Writer, stderr io.Writer, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
 	var pid uint32
 	for stream.Receive() {
 		body := stream.Msg().GetEvent()
@@ -244,7 +252,7 @@ func ExecBackground(ctx context.Context, stdout, stderr io.Writer, pc *client.Pr
 		streamLocalStdin(ctx, pc, pid)
 	}
 	_ = stream.Close()
-	fmt.Fprintln(stderr, pid)
+	_, _ = fmt.Fprintln(stderr, pid)
 	return nil
 }
 
@@ -275,9 +283,9 @@ func streamLocalStdin(ctx context.Context, pc *client.ProcessClient, pid uint32)
 		if n > 0 {
 			if err := pc.SendInput(ctx, pid, buf[:n]); err != nil {
 				if client.IsNotFound(err) {
-					fmt.Fprintln(os.Stderr, i18n.T(i18n.Msg.Sandbox.StdinAfterExit))
+					_, _ = fmt.Fprintln(os.Stderr, i18n.T(i18n.Msg.Sandbox.StdinAfterExit))
 				} else {
-					fmt.Fprintf(os.Stderr, i18n.T(i18n.Msg.Sandbox.StdinForwardFailed)+"\n", err)
+					_, _ = fmt.Fprintf(os.Stderr, i18n.T(i18n.Msg.Sandbox.StdinForwardFailed)+"\n", err)
 				}
 				return
 			}
@@ -287,7 +295,7 @@ func streamLocalStdin(ctx context.Context, pc *client.ProcessClient, pid uint32)
 		}
 	}
 	if err := pc.CloseStdin(ctx, pid); err != nil && !client.IsNotFound(err) {
-		fmt.Fprintf(os.Stderr, i18n.T(i18n.Msg.Sandbox.CloseStdinFailed)+"\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, i18n.T(i18n.Msg.Sandbox.CloseStdinFailed)+"\n", err)
 	}
 }
 
