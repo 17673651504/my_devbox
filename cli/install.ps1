@@ -20,7 +20,10 @@ function Install-DevBox {
     $Script:APP_DISPLAY_NAME = "DevBox"
     $Script:INSTALL_DIR = if ($Prefix) { $Prefix } else { Join-Path $HOME ".huawei\bin" }
     $Script:CONFIG_DIR = Join-Path $HOME ".devbox"
-    $Script:DEFAULT_ARTIFACT_URL = "https://github.com/huaweicloud/devspace-devbox/releases/download/0.1.0-release"
+    $Script:DEFAULT_ARTIFACT_URL = "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+    if ($Script:DEFAULT_ARTIFACT_URL -match '^__.*__$') {
+        $Script:DEFAULT_ARTIFACT_URL = "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+    }
     $Script:DEFAULT_VERSION = "0.1.0-release"
     $Script:ARTIFACT_URL = if ($Url) { $Url } elseif ($env:ARTIFACT_URL_FROM_ENV) { $env:ARTIFACT_URL_FROM_ENV } else { "" }
     $Script:VERSION = if ($Version) { $Version } elseif ($env:APP_VERSION) { $env:APP_VERSION } else { $Script:DEFAULT_VERSION }

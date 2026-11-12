@@ -4,25 +4,30 @@
 #
 # Inject the version and download URL into install.sh / install.ps1, per channel:
 #
-#   dist-extra/install.sh / install.ps1      â€” GitHub channel (points to GitHub Release)
+#   dist-extra/install.sh / install.ps1      â€?GitHub channel (points to GitHub Release)
+#   dist-extra/obs/install.sh / install.ps1  â€?OBS channel (points to the OBS flat dir)
 #
 # GitCode needs no separate bake: post-release.sh re-bakes it to the GitCode URL on
 # upload via upload-gitcode-release.sh.
 #
 # Usage:
-#   ./scripts/bake-install.sh <version> <github_release_url>
+#   ./scripts/bake-install.sh <version> <github_release_url> [obs_release_url]
 #
 # Example:
 #   ./scripts/bake-install.sh 1.0.0-release \
-#     "https://github.com/17673651504/my_devbox/releases/download/1.0.0-release"
+#     "https://github.com/17673651504/my_devbox/releases/download/1.0.0-release" \
+#     "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+
 #
 # Output:
-#   dist-extra/install.sh / install.ps1   â€” GitHub channel
+#   dist-extra/install.sh / install.ps1   â€?GitHub channel
+#   dist-extra/obs/install.sh / .ps1      â€?OBS channel (only when obs_release_url is set)
 # =============================================================================
 set -euo pipefail
 
-VERSION="${1:?usage: bake-install.sh <version> <github_release_url>}"
-GITHUB_RELEASE_URL="${2:?usage: bake-install.sh <version> <github_release_url>}"
+VERSION="${1:?usage: bake-install.sh <version> <github_release_url> [obs_release_url]}"
+GITHUB_RELEASE_URL="${2:?usage: bake-install.sh <version> <github_release_url> [obs_release_url]}"
+OBS_RELEASE_URL="${3:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -47,3 +52,8 @@ bake() {
 
 # ---- GitHub channel ----
 bake "${PROJECT_ROOT}" "${OUTPUT_DIR}" "${GITHUB_RELEASE_URL}"
+
+# ---- OBS channel (optional) ----
+if [[ -n "${OBS_RELEASE_URL}" ]]; then
+    bake "${PROJECT_ROOT}" "${OUTPUT_DIR}/obs" "${OBS_RELEASE_URL}"
+fi

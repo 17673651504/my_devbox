@@ -1,5 +1,5 @@
 # =============================================================================
-# GoReleaser config â€” prod environment
+# GoReleaser config â€?prod environment
 #
 # Usage:
 #   goreleaser release --clean                     # derive version from git tag and publish
@@ -24,7 +24,8 @@ before:
   hooks:
     - go test ./...
     # Bake install scripts: inject version + GitHub Release URL
-    - ./scripts/bake-install.sh {{ .Version }} "https://github.com/17673651504/my_devbox/releases/download/{{ .Version }}"
+    - ./scripts/bake-install.sh {{ .Version }} "https://github.com/17673651504/my_devbox/releases/download/{{ .Version }}" "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+
 
 builds:
   - id: devbox
