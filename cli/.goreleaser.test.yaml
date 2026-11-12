@@ -1,15 +1,15 @@
 # =============================================================================
-# GoReleaser config â€?test environment
+# GoReleaser config â€” test environment
 #
 # Usage:
 #   goreleaser build --snapshot --clean --config .goreleaser.test.yaml
-#     â†?PR trigger: verify compilation only, no packaging or publishing
+#     â†’ PR trigger: verify compilation only, no packaging or publishing
 #
 #   goreleaser release --clean --skip=publish --config .goreleaser.test.yaml
-#     â†?manual trigger (non-release version): build + package + store to dist/, no publish
+#     â†’ manual trigger (non-release version): build + package + store to dist/, no publish
 #
 #   goreleaser release --clean --config .goreleaser.test.yaml
-#     â†?manual trigger (release version): build + publish GitHub Release
+#     â†’ manual trigger (release version): build + publish GitHub Release
 #
 # Differences from prod:
 #   - only the ldflags-injected test addresses differ
@@ -27,7 +27,6 @@ before:
     - go test ./...
     # Bake install scripts: inject version + GitHub Release URL
     - ./scripts/bake-install.sh {{ .Version }} "https://github.com/17673651504/my_devbox/releases/download/{{ .Version }}" "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
-
 
 builds:
   - id: devbox
