@@ -603,11 +603,25 @@ def _validate_envd_runtime(sandbox: Sandbox) -> None:
     )
     print(
         f"    cpu={metrics.cpu_count}x {metrics.cpu_used_pct:.2f}%"
+        f" | hotplug possible={metrics.cpu_possible} target={metrics.cpu_target}"
+        f" attempts={metrics.cpu_target_attempts} pending={metrics.cpu_write_pending_ms}ms"
         f" | memory={metrics.mem_used}/{metrics.mem_total} bytes"
         f" | disk={metrics.disk_used}/{metrics.disk_total} bytes",
         flush=True,
     )
     _equal(metrics.cpu_count > 0, True)
+    _equal(metrics.cpu_possible is not None, True)
+    _equal(metrics.cpu_target is not None, True)
+    _equal(metrics.cpu_target_attempts is not None, True)
+    _equal(metrics.cpu_write_pending_ms is not None, True)
+    if metrics.cpu_possible is not None:
+        _equal(metrics.cpu_possible >= metrics.cpu_count, True)
+    if metrics.cpu_target is not None:
+        _equal(metrics.cpu_target >= 0, True)
+    if metrics.cpu_target_attempts is not None:
+        _equal(metrics.cpu_target_attempts >= 0, True)
+    if metrics.cpu_write_pending_ms is not None:
+        _equal(metrics.cpu_write_pending_ms >= 0, True)
     _equal(0 <= metrics.cpu_used_pct <= 100, True)
     _equal(0 <= metrics.mem_used <= metrics.mem_total, True)
     _equal(0 <= metrics.mem_cache <= metrics.mem_total, True)

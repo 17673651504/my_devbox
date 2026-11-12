@@ -180,7 +180,8 @@ envs = sandbox.envd.get_envs()
 print(health.envd_version, metrics.cpu_used_pct, envs["DEVBOX_ID"])
 ```
 
-`get_metrics()` 返回一次实时采样：CPU 核数与使用率、内存总量/使用量/缓存、磁盘总量/使用量。
+`get_metrics()` 返回一次实时采样：CPU 核数与使用率、CPU hotplug 状态、
+内存总量/使用量/缓存、磁盘总量/使用量。
 `get_envs()` 返回 EnvD 当前合并后的环境变量。`health()` 直接探测数据面，成功时返回
 `X-Envd-Version`；这些接口与 Manager 的 `get_info()`/`is_running()` 不同，不会查询管理面状态。
 

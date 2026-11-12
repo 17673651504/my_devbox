@@ -168,7 +168,8 @@ const envs = await sandbox.envd.getEnvs();
 console.log(health.envdVersion, metrics.cpuUsedPct, envs.DEVBOX_ID);
 ```
 
-`getMetrics()` 返回一次实时采样：CPU 核数与使用率、内存总量/使用量/缓存、磁盘总量/使用量。
+`getMetrics()` 返回一次实时采样：CPU 核数与使用率、CPU hotplug 状态、
+内存总量/使用量/缓存、磁盘总量/使用量。
 `getEnvs()` 返回 EnvD 当前合并后的环境变量。`health()` 直接探测数据面，成功时返回
 `X-Envd-Version`；这些接口与 Manager 的 `getInfo()`/`isRunning()` 不同，不会查询管理面状态。
 

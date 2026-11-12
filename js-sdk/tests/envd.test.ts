@@ -14,6 +14,10 @@ describe("Envd", () => {
     pool.intercept({ path: "/metrics", method: "GET", headers }).reply(200, {
       ts: 1_763_000_000,
       cpu_count: 2,
+      cpu_possible: 16,
+      cpu_target: 8,
+      cpu_target_attempts: 3,
+      cpu_write_pending_ms: 1_500,
       cpu_used_pct: 8.25,
       mem_total: 1_024,
       mem_used: 512,
@@ -40,6 +44,10 @@ describe("Envd", () => {
 
     await expect(envd.getMetrics()).resolves.toMatchObject({
       cpuCount: 2,
+      cpuPossible: 16,
+      cpuTarget: 8,
+      cpuTargetAttempts: 3,
+      cpuWritePendingMs: 1_500,
       cpuUsedPct: 8.25,
       memTotal: 1_024,
       diskUsed: 1_024,
@@ -78,6 +86,10 @@ describe("Envd", () => {
 
     const metrics = await envd.getMetrics();
     expect(metrics.oomKills).toBeUndefined();
+    expect(metrics.cpuPossible).toBeUndefined();
+    expect(metrics.cpuTarget).toBeUndefined();
+    expect(metrics.cpuTargetAttempts).toBeUndefined();
+    expect(metrics.cpuWritePendingMs).toBeUndefined();
     agent.assertNoPendingInterceptors();
   });
 });
