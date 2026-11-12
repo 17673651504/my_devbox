@@ -26,7 +26,7 @@ before:
   hooks:
     - go test ./...
     # Bake install scripts: inject version + GitHub Release URL
-    - ./scripts/bake-install.sh {{ .Version }} "https://github.com/huaweicloud/devspace-devbox/releases/download/{{ .Version }}"
+    - ./scripts/bake-install.sh {{ .Version }} "https://github.com/huaweicloud/devspace-devbox/releases/download/{{ .Version }}" "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
 
 builds:
   - id: devbox

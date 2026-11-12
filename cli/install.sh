@@ -56,7 +56,10 @@ APP_NAME=devbox
 APP_DISPLAY_NAME="DevBox"
 INSTALL_DIR="$HOME/.huawei/bin"
 CONFIG_DIR="$HOME/.devbox"
-DEFAULT_ARTIFACT_URL="https://github.com/huaweicloud/devspace-devbox/releases/download/0.1.0-release"
+DEFAULT_ARTIFACT_URL="https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+if [[ "${DEFAULT_ARTIFACT_URL}" == __*__ ]]; then
+    DEFAULT_ARTIFACT_URL="https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+fi
 DEFAULT_VERSION="0.1.0-release"
 ARTIFACT_URL=""
 VERSION=""

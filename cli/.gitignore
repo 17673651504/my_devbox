@@ -1,6 +1,8 @@
 # Build artifacts
 bin/
-/devbox
+/distbox
+dist/
+dist-extra/
 *.exe
 
 # Editor
