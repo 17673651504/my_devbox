@@ -4,8 +4,8 @@
 #
 # Inject the version and download URL into install.sh / install.ps1, per channel:
 #
-#   dist-extra/install.sh / install.ps1      â€” GitHub channel (points to GitHub Release)
-#   dist-extra/obs/install.sh / install.ps1  â€” OBS channel (points to the OBS flat dir)
+#   dist-extra/install.sh / install.ps1      â€?GitHub channel (points to GitHub Release)
+#   dist-extra/obs/install.sh / install.ps1  â€?OBS channel (points to the OBS flat dir)
 #
 # GitCode needs no separate bake: post-release.sh re-bakes it to the GitCode URL on
 # upload via upload-gitcode-release.sh.
@@ -15,12 +15,13 @@
 #
 # Example:
 #   ./scripts/bake-install.sh 1.0.0-release \
-#     "https://github.com/huaweicloud/devspace-devbox/releases/download/1.0.0-release" \
+#     "https://github.com/17673651504/my_devbox/releases/download/1.0.0-release" \
 #     "https://tools-artifact.developer.huaweicloud.com/sharedata/devbox"
+
 #
 # Output:
-#   dist-extra/install.sh / install.ps1   â€” GitHub channel
-#   dist-extra/obs/install.sh / .ps1      â€” OBS channel (only when obs_release_url is set)
+#   dist-extra/install.sh / install.ps1   â€?GitHub channel
+#   dist-extra/obs/install.sh / .ps1      â€?OBS channel (only when obs_release_url is set)
 # =============================================================================
 set -euo pipefail
 
