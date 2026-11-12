@@ -29,7 +29,7 @@ var loginCmd = &cobra.Command{
 
 		// 1. explicit --api-key: verified and stored.
 		if apiKey != "" {
-			if err := auth.VerifyAPIKey(cmd.Context(), config.AuthCheckDomain, apiKey); err != nil {
+			if err := auth.VerifyAPIKey(cmd.Context(), config.DefaultServer, apiKey); err != nil {
 				return auth.LoginVerifyError(i18n.T(i18n.Msg.Auth.LoginFailed), err)
 			}
 			if err := auth.StoreCredential(&auth.Credential{APIKey: apiKey}, nil); err != nil {
@@ -41,7 +41,7 @@ var loginCmd = &cobra.Command{
 
 		// 2. reuse existing credentials (env var > keyring/config file), verify first.
 		if cred := auth.ReadValidAPIKey(); cred != nil && cred.APIKey != "" {
-			if err := auth.VerifyAPIKey(cmd.Context(), config.AuthCheckDomain, cred.APIKey); err != nil {
+			if err := auth.VerifyAPIKey(cmd.Context(), config.DefaultServer, cred.APIKey); err != nil {
 				return auth.LoginVerifyError(i18n.T(i18n.Msg.Auth.LoginVerifyFailed), err)
 			}
 			fmt.Println(i18n.T(i18n.Msg.Auth.LoginReused))
@@ -77,18 +77,18 @@ var statusCmd = &cobra.Command{
 		// and diagnostics go to stderr so redirects and scripts get clean stdout.
 		cred, err := auth.LoadCredential()
 		if err != nil {
-			fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.NotLoggedIn))
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.NotLoggedIn))
 			return nil
 		}
 
 		ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
 		defer cancel()
-		if err := auth.VerifyAPIKey(ctx, config.AuthCheckDomain, cred.APIKey); err != nil {
+		if err := auth.VerifyAPIKey(ctx, config.DefaultServer, cred.APIKey); err != nil {
 			if auth.IsUnauthorized(err) {
-				fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.CredInvalidHint))
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.CredInvalidHint))
 				return nil
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.StatusVerifyFailed)+"\n", err)
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), i18n.T(i18n.Msg.Auth.StatusVerifyFailed)+"\n", err)
 			return nil
 		}
 		fmt.Println(i18n.T(i18n.Msg.Auth.LoggedIn))

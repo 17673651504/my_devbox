@@ -67,8 +67,15 @@ type NewSandbox struct {
 	EnvVars    *map[string]string `json:"envVars,omitempty"`
 	Lifecycle  *SandboxLifecycle  `json:"lifecycle,omitempty"`
 	Metadata   *map[string]string `json:"metadata,omitempty"`
+	Network    *SandboxNetwork    `json:"network,omitempty"`
 	TemplateID string             `json:"templateID"`
 	Timeout    *int32             `json:"timeout,omitempty"`
+}
+
+// SandboxNetwork defines model for SandboxNetwork.
+type SandboxNetwork struct {
+	// AllowPublicTraffic Whether the sandbox may send and receive public network traffic.
+	AllowPublicTraffic bool `json:"allowPublicTraffic"`
 }
 
 // Sandbox defines model for Sandbox.
@@ -179,7 +186,7 @@ type SetSandboxTimeoutJSONRequestBody = TimeoutOption
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
-// Doer performs HTTP requests.
+// HttpRequestDoer performs HTTP requests.
 //
 // The standard http.Client implements this interface.
 type HttpRequestDoer interface {
@@ -206,7 +213,7 @@ type Client struct {
 // ClientOption allows setting custom parameters during construction
 type ClientOption func(*Client) error
 
-// Creates a new Client, with reasonable defaults
+// NewClient creates a new Client, with reasonable defaults
 func NewClient(server string, opts ...ClientOption) (*Client, error) {
 	// create a client with sane default values
 	client := Client{
@@ -247,7 +254,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 	}
 }
 
-// The interface specification for the client above.
+// ClientInterface is the interface specification for the client above.
 type ClientInterface interface {
 
 	// ListSandboxes performs a GET /sandboxes (the `ListSandboxes` operationId) request.

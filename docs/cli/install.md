@@ -11,7 +11,7 @@ description: 使用官方安装脚本安装并验证 DevBox CLI。
 
 - Bash 和 `curl`，或者 PowerShell 5.1 及以上版本；
 - x86-64 或 ARM64 架构；
-- 可以访问 GitHub 或 GitCode 安装源；
+- 可以访问 GitHub、GitCode 或 OBS 安装源；
 - 对 `~/.huawei` 目录具有写权限。
 
 ## 安装
@@ -30,6 +30,10 @@ curl -fsSL https://github.com/huaweicloud/devspace-devbox/releases/latest/downlo
 curl -fsSL https://gitcode.com/CloudDeveloperDepartment/devbox/releases/download/latest/install.sh | bash
 ```
 
+```bash [OBS]
+curl -fsSL https://tools-artifact.developer.huaweicloud.com/sharedata/devbox/install.sh | bash
+```
+
 :::
 
 ### PowerShell
@@ -44,6 +48,10 @@ irm https://github.com/huaweicloud/devspace-devbox/releases/latest/download/inst
 
 ```powershell [GitCode]
 irm https://gitcode.com/CloudDeveloperDepartment/devbox/releases/download/latest/install.ps1 | iex
+```
+
+```powershell [OBS]
+irm https://tools-artifact.developer.huaweicloud.com/sharedata/devbox/install.ps1 | iex
 ```
 
 :::
@@ -73,12 +81,9 @@ $env:Path = "$HOME/.huawei/bin;$env:Path"
 
 ## 验证安装
 
-```bash
-devbox --version      # 显示版本号
+```console
+devbox --version
+devbox --help
 ```
 
-构建时通过 ldflags 注入版本号（默认 `dev`）：
-
-```bash
-go build -trimpath -ldflags "-X github.com/huaweicloud/devspace-devbox/cli/cmd.Version=v1.0.0" -o devbox ./cmd/devbox
-```
+第一条命令显示当前 CLI 版本；第二条命令显示当前版本支持的命令。

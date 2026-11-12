@@ -111,7 +111,7 @@ func envdPortFromDomain(u *url.URL) int {
 }
 
 // Start starts a process in the sandbox and returns the event stream. The
-// stream ends when the process exits (EndEvent) or the context is cancelled.
+// stream ends when the process exits (EndEvent) or the context is canceled.
 func (p *ProcessClient) Start(ctx context.Context, cfg *process.ProcessConfig, stdin bool) (*connect.ServerStreamForClient[process.StartResponse], error) {
 	req := connect.NewRequest(&process.StartRequest{
 		Process: cfg,

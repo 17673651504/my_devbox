@@ -35,10 +35,16 @@ export interface CreateSandboxOptions {
   metadata?: Readonly<Record<string, string>>;
   buildId?: string;
   lifecycle?: SandboxLifecycle;
+  network?: { allowPublicTraffic?: boolean };
 }
 
 export interface ConnectSandboxOptions {
   timeout?: number;
+}
+
+export interface PauseSandboxOptions {
+  memory?: boolean;
+  mode?: "full" | "filesystem";
 }
 
 export interface ListSandboxesOptions {
@@ -234,8 +240,17 @@ export class Sandbox {
   }
 
   /** Save memory and disk. Paused sandbox records do not expire in Manager. */
-  async pause(): Promise<void> {
-    await this.#control.request("POST", `/sandboxes/${identifier(this.sandboxId)}/pause`);
+  async pause(options: PauseSandboxOptions = {}): Promise<void> {
+    if (options.memory === false || options.mode === "filesystem")
+      throw new RangeError("Only full memory snapshots are supported");
+    if (options.memory !== undefined && typeof options.memory !== "boolean")
+      throw new TypeError("memory must be a boolean");
+    if (options.mode !== undefined && options.mode !== "full")
+      throw new RangeError("mode must be full");
+    await this.#control.request("POST", `/sandboxes/${identifier(this.sandboxId)}/pause`, {
+      json:
+        options.memory !== undefined || options.mode !== undefined ? { memory: true } : undefined,
+    });
     this.#info = { ...this.#info, state: SandboxState.Paused };
     await this.#closeGateway();
   }
@@ -386,6 +401,19 @@ function createBody(template: string, options: CreateSandboxOptions): WireObject
     body.lifecycle = { onTimeout, autoResume: options.lifecycle.autoResume ?? false };
   }
   if (options.buildId) body.buildID = options.buildId;
+  if (options.network !== undefined) {
+    const network = options.network;
+    if (
+      !network ||
+      typeof network !== "object" ||
+      Array.isArray(network) ||
+      Object.keys(network).some((key) => key !== "allowPublicTraffic")
+    )
+      throw new TypeError("network only supports allowPublicTraffic");
+    if (network.allowPublicTraffic !== undefined && typeof network.allowPublicTraffic !== "boolean")
+      throw new TypeError("network.allowPublicTraffic must be a boolean");
+    body.network = { ...network };
+  }
   return body;
 }
 

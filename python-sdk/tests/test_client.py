@@ -277,6 +277,23 @@ def test_create_uses_manager_contract() -> None:
     assert "connect-token" not in repr(sandbox._connection)
 
 
+@pytest.mark.parametrize("public", [True, False])
+def test_create_network_and_full_pause(public: bool) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if request.url.path.endswith("/pause"):
+            assert body == {"memory": True}
+            return httpx.Response(204)
+        assert body["network"] == {"allowPublicTraffic": public}
+        return httpx.Response(201, json=connection_response())
+
+    with client(handler) as api:
+        sandbox = api.sandboxes.create(network={"allow_public_traffic": public})
+        sandbox.pause(mode="full")
+        with pytest.raises(ValueError, match="full memory"):
+            sandbox.pause(memory=False)
+
+
 def test_create_serializes_auto_resume_lifecycle() -> None:
     captured: list[httpx.Request] = []
 
@@ -414,9 +431,11 @@ def test_lifecycle_uses_documented_paths_and_bodies() -> None:
 
 
 def test_lifecycle_timeout_supports_24_hours() -> None:
+    assert _checked_timeout(1) == 1
+    assert _checked_timeout(9) == 9
     assert _checked_timeout(7200) == 7200
     assert _checked_timeout(86400) == 86400
-    for invalid in (-1, 0, 9, 86401, 90000, True):
+    for invalid in (-1, 0, 86401, 90000, True):
         with pytest.raises(ValueError, match="86400"):
             _checked_timeout(invalid)
 

@@ -31,7 +31,7 @@ devbox sandbox create <templateID>
 自动化场景加上 `-d/--detach`，创建成功后只打印沙箱 ID：
 
 ```bash
-devbox sandbox create tpl-devbox-base-4g -d -t 600
+devbox sandbox create <templateID> -d -t 600
 ```
 
 ## 连接沙箱
@@ -53,11 +53,12 @@ devbox sandbox connect <sandboxID> -c /tmp -e MYTEST=123
 
 ## 列出沙箱
 
-列出沙箱，支持按模板、状态与元数据过滤：
+列出沙箱，支持按模板、状态、元数据与启动时间过滤，并可按启动时间排序：
 
 ```bash
 devbox sandbox list
-devbox sandbox list -t <模板ID或别名> -s running -m "user=abc"
+devbox sandbox list -t <templateID> -s running -m "user=abc"
+devbox sandbox list --started-after 2025-01-01T00:00:00Z -o asc
 devbox sandbox list -f json
 ```
 
@@ -66,6 +67,8 @@ devbox sandbox list -f json
 | `-t, --template` | 按模板 ID 或别名过滤 |
 | `-s, --state` | 按状态过滤：`running` / `paused`，可重复 |
 | `-m, --metadata` | 按元数据过滤 |
+| `--started-after` | 只返回在该时间点（含）之后启动的沙箱，ISO 8601 格式，如 `2025-01-01T00:00:00Z` |
+| `-o, --order` | 按启动时间排序：`asc` / `desc`（默认 `desc`） |
 | `-l, --limit` | 返回数量上限，0 表示不限制（默认 100，上限 1000） |
 | `-f, --format` | 输出格式：`pretty` 或 `json` |
 

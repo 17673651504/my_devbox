@@ -32,11 +32,6 @@ import (
 // intentionally not configurable at runtime.
 var DefaultServer = "https://devbox-test.developer.myhuaweicloud.com"
 
-// AuthCheckDomain is the domain of the API key verification endpoint
-// ({AuthCheckDomain}/v1/api-keys/check). Build-time injectable, not
-// runtime-configurable.
-var AuthCheckDomain = "https://bridge.developer.myhuaweicloud.com"
-
 // ApikeyPagePath is the API key management page path on the login portal
 // ({LoginURL}{ApikeyPagePath}), shown in login hints when no browser is
 // available. The page distinguishes products via the origin parameter.
@@ -48,11 +43,12 @@ const ApikeyPagePath = "/space/devbox/apikey"
 var LoginURL = "https://devstation.connect.huaweicloud.com"
 
 const (
-	// Config keys.
-	KeyAPIKey   = "api_key"
+	// KeyAPIKey is the config-file key holding the API key fallback.
+	KeyAPIKey = "api_key"
+	// KeyUserInfo is the config-file key holding the account metadata.
 	KeyUserInfo = "user_info"
 
-	// Environment variables used as override sources.
+	// EnvAPIKey is the environment variable overriding the stored API key.
 	EnvAPIKey = "HW_DEVBOX_API_KEY"
 
 	configFileName = "config.json"

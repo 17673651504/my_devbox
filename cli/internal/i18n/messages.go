@@ -105,6 +105,7 @@ type SandboxMessages struct {
 	FlagBuildID         Message
 	FlagOnTimeout       Message
 	FlagAutoResume      Message
+	FlagNetworkPublic   Message
 	FlagDetach          Message
 	FlagCwd             Message
 	FlagStartedAfter    Message
@@ -127,6 +128,8 @@ type TemplateMessages struct {
 
 type ClientMessages struct {
 	Unauthorized           Message
+	UpgradeRequired        Message
+	UpdateLabel            Message
 	InvalidServerURL       Message
 	InvalidServerURLScheme Message
 	InvalidServerURLHost   Message

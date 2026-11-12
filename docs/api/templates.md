@@ -6,7 +6,14 @@
 
 `GET /templates`
 
-无请求参数。
+也支持 `GET /v2/templates`。可选分页参数：
+
+| Query 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `limit` | integer | 每页 1–1000 条；省略或 0 返回全部匹配项 |
+| `nextToken` | string | 上一页 `X-Next-Token` 响应头，按原值传回 |
+
+响应头 `X-Next-Token` 为空表示没有下一页。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/templates" \

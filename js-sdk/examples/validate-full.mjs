@@ -285,6 +285,7 @@ async function validateLifecycle(client, sandbox, validator) {
   const payload = Buffer.alloc(1024 * 1024);
   for (let i = 0; i < payload.length; i++) payload[i] = i % 256;
   let process;
+  const resumeTimings = new Map();
   const persistence = async (handle = sandbox) => {
     const content = await step("files.readBytes() | compare all 1 MiB after recovery", () =>
       handle.files.readBytes(path),
@@ -322,6 +323,52 @@ async function validateLifecycle(client, sandbox, validator) {
     equal(result.stderr, "");
     await persistence();
   };
+  const liveUpgrade = async () => {
+    const before = await step("envd.health() | read the EnvD version before pause", () =>
+      sandbox.envd.health(),
+    );
+
+    const pauseStarted = performance.now();
+    await step("sandbox.pause() | capture the running EnvD state", () => sandbox.pause());
+    const pauseElapsed = (performance.now() - pauseStarted) / 1000;
+    await step("sandbox.close() | resume through a fresh SDK handle", () => sandbox.close());
+
+    const resumeStarted = performance.now();
+    const connected = await step(
+      "sandboxes.connect(id, {timeout:600}) | Manager restores and may live-upgrade EnvD",
+      () => client.sandboxes.connect(sandbox.sandboxId, { timeout: 600 }),
+    );
+    const resumeElapsed = (performance.now() - resumeStarted) / 1000;
+    sandbox = connected;
+
+    const after = await step("envd.health() | read the EnvD version after resume", () =>
+      sandbox.envd.health(),
+    );
+    const upgradeWindow = (performance.now() - pauseStarted) / 1000;
+    console.log(
+      `    before=${JSON.stringify(before.envdVersion)} after=${JSON.stringify(after.envdVersion)} ` +
+        `| pause=${pauseElapsed.toFixed(3)}s ` +
+        `| resume=${resumeElapsed.toFixed(3)}s ` +
+        `| upgradeWindow=${upgradeWindow.toFixed(3)}s`,
+    );
+
+    if (versionKey(after.envdVersion) === versionKey(before.envdVersion)) {
+      console.log("    SKIP live upgrade | target EnvD is not newer; verify normal resume instead");
+    } else if (versionKey(after.envdVersion) < versionKey(before.envdVersion)) {
+      throw new Error(`EnvD was downgraded: ${before.envdVersion} -> ${after.envdVersion}`);
+    } else {
+      console.log("    CHECK EnvD was upgraded during resume");
+      resumeTimings.set("upgraded", [pauseElapsed, resumeElapsed]);
+    }
+
+    await persistence(sandbox);
+    const result = await step(
+      "commands.run('printf live-upgrade-probe-ok') | execute a new process",
+      () => sandbox.commands.run("printf live-upgrade-probe-ok", { timeoutMs: 30_000 }),
+    );
+    equal(result.stdout, "live-upgrade-probe-ok");
+    equal(result.stderr, "");
+  };
   const stages = [
     [
       "lifecycle.prepare",
@@ -337,6 +384,7 @@ async function validateLifecycle(client, sandbox, validator) {
         );
       },
     ],
+    ["lifecycle.liveUpgrade", () => liveUpgrade()],
     [
       "lifecycle.deadlines",
       async () => {
@@ -379,14 +427,41 @@ async function validateLifecycle(client, sandbox, validator) {
     [
       "lifecycle.connectResume",
       async () => {
+        const pauseStarted = performance.now();
         await step("sandbox.pause()", () => sandbox.pause());
+        const pauseElapsed = (performance.now() - pauseStarted) / 1000;
         await step("sandbox.close() | close local connections, not the sandbox", () =>
           sandbox.close(),
         );
+        const resumeStarted = performance.now();
         const connected = await step(
           "sandboxes.connect(id, {timeout:300}) | Manager restores the paused sandbox",
           () => client.sandboxes.connect(sandbox.sandboxId, { timeout: 300 }),
         );
+        const resumeElapsed = (performance.now() - resumeStarted) / 1000;
+        resumeTimings.set("normal", [pauseElapsed, resumeElapsed]);
+        console.log(
+          `    TIMING normal resume | pause=${pauseElapsed.toFixed(3)}s ` +
+            `| resume=${resumeElapsed.toFixed(3)}s ` +
+            `| total=${(pauseElapsed + resumeElapsed).toFixed(3)}s`,
+        );
+        if (resumeTimings.has("upgraded")) {
+          const [upgradedPause, upgradedResume] = resumeTimings.get("upgraded");
+          const resumeOverhead = upgradedResume - resumeElapsed;
+          const totalOverhead = upgradedPause + upgradedResume - pauseElapsed - resumeElapsed;
+          console.log(
+            "    TIMING resume comparison | upgraded " +
+              `pause=${upgradedPause.toFixed(3)}s resume=${upgradedResume.toFixed(3)}s ` +
+              `total=${(upgradedPause + upgradedResume).toFixed(3)}s` +
+              ` | normal pause=${pauseElapsed.toFixed(3)}s ` +
+              `resume=${resumeElapsed.toFixed(3)}s ` +
+              `total=${(pauseElapsed + resumeElapsed).toFixed(3)}s` +
+              ` | resume overhead=${resumeOverhead >= 0 ? "+" : ""}${resumeOverhead.toFixed(3)}s ` +
+              `(${((resumeOverhead / resumeElapsed) * 100).toFixed(1)}%)` +
+              ` | total overhead=${totalOverhead >= 0 ? "+" : ""}${totalOverhead.toFixed(3)}s ` +
+              `(${((totalOverhead / (pauseElapsed + resumeElapsed)) * 100).toFixed(1)}%)`,
+          );
+        }
         try {
           equal(connected.sandboxId, sandbox.sandboxId);
           const content = await step("connected.files.readBytes() | same remote filesystem", () =>
@@ -808,6 +883,14 @@ function terminalText(value) {
 function equal(actual, expected) {
   if (actual !== expected)
     throw new Error(`expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
+}
+
+function versionKey(version) {
+  const match = String(version)
+    .trim()
+    .match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) throw new Error(`invalid EnvD semantic version: ${JSON.stringify(version)}`);
+  return match.slice(1).map(Number);
 }
 
 function seconds(started) {

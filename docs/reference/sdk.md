@@ -58,10 +58,13 @@ const page = await client.sandboxes.list({ template: "default", limit: 1000 });
 | `envs` | 沙箱环境变量，字符串键值 |
 | `metadata` | 沙箱业务标签，字符串键值 |
 | `lifecycle` | 到期销毁或暂停，是否允许自动恢复 |
+| `network` | Python `{"allow_public_traffic": false}` / JS `{ allowPublicTraffic: false }`，控制应用端口是否允许匿名访问；需服务端版本支持 |
 
-沙箱存活时间支持 10～86400 秒。`lifecycle.on_timeout` / `onTimeout` 为 `"kill"` 或 `"pause"`；`auto_resume` / `autoResume` 仅在到期暂停时启用。运行中的 `connect(timeout=...)` 只延长、不缩短期限；恢复时从恢复成功开始计算新期限。
+沙箱存活时间支持 1～86400 秒。`lifecycle.on_timeout` / `onTimeout` 为 `"kill"` 或 `"pause"`；`auto_resume` / `autoResume` 仅在到期暂停时启用。运行中的 `connect(timeout=...)` 只延长、不缩短期限；恢复时从恢复成功开始计算新期限。
 
 示例与行为说明见[快速入门](../index.md#创建并使用沙箱)和[生命周期](../guide/lifecycle.md)。
+
+完整快照暂停支持 Python `sandbox.pause(mode="full")`、`sandbox.pause(memory=True)`，JS `sandbox.pause({ mode: "full" })`、`sandbox.pause({ memory: true })`；与无参数暂停等价。`memory=false`、`mode="filesystem"` 明确报错。
 
 ## 模板
 
