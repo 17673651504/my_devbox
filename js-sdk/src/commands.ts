@@ -194,8 +194,13 @@ export class Commands {
       inputStream?: "stdin" | "pty";
     },
   ): Promise<CommandHandle> {
-    if (options.user !== undefined)
-      throw new ConfigurationError("user switching is not supported by the current EnvD service");
+    const headers: Record<string, string> = { "Keepalive-Ping-Interval": "50" };
+    const user = options.user;
+    if (user !== undefined) {
+      if (!user || user !== user.trim() || user.includes(":") || user.includes("\0"))
+        throw new ConfigurationError("user must be a non-empty sandbox username");
+      headers.Authorization = `Basic ${Buffer.from(`${user}:`, "utf8").toString("base64")}`;
+    }
     const request = { ...body };
     if (options.pty) {
       if (options.pty.rows < 1 || options.pty.cols < 1)
@@ -203,7 +208,6 @@ export class Commands {
       request.pty = { size: { rows: options.pty.rows, cols: options.pty.cols } };
     }
     const transport = await this.#transport();
-    const headers: Record<string, string> = { "Keepalive-Ping-Interval": "50" };
     const stream = transport.connectStream(
       `${PROCESS}/Start`,
       request,

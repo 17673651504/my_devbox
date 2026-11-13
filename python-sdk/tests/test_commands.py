@@ -14,11 +14,15 @@ from devbox.commands import AsyncCommands, CommandHandle, Commands
 from devbox.pty import AsyncPty, Pty
 
 
-def test_command_uses_envd_connect_protocol() -> None:
+@pytest.mark.parametrize("user", [None, "nobody"])
+def test_command_uses_envd_connect_protocol(user: str | None) -> None:
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        assert request.headers.get("Authorization") == (
+            "Basic bm9ib2R5Og==" if user is not None else None
+        )
         assert request.url.path == "/process.Process/Start"
         body = _request_frame(request)
         assert body == {
@@ -41,7 +45,7 @@ def test_command_uses_envd_connect_protocol() -> None:
     output: list[str] = []
     with _transport(handler) as transport:
         result = Commands(lambda: transport).run(
-            "echo hello", envs={"LANG": "C"}, cwd="/tmp", on_stdout=output.append
+            "echo hello", envs={"LANG": "C"}, cwd="/tmp", on_stdout=output.append, user=user
         )
 
     assert isinstance(result, CommandResult)
@@ -65,22 +69,24 @@ def test_pty_preserves_runtime_locale(envs: dict[str, str] | None) -> None:
         assert Pty(commands, lambda: transport).start(envs=envs).wait().exit_code == 0
 
 
-def test_user_switching_is_not_silently_ignored() -> None:
+@pytest.mark.parametrize("user", ["", " nobody", "user:name"])
+def test_invalid_user_does_not_start_a_process(user: str) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        raise AssertionError("unsupported user must not start a process")
+        raise AssertionError("invalid user must not start a process")
 
     with _transport(handler) as transport:
         commands = Commands(lambda: transport)
-        with pytest.raises(ConfigurationError, match="user switching"):
-            commands.run("id", user="nobody")
-        with pytest.raises(ConfigurationError, match="user switching"):
-            Pty(commands, lambda: transport).start(user="nobody")
+        with pytest.raises(ConfigurationError, match="sandbox username"):
+            commands.run("id", user=user)
+        with pytest.raises(ConfigurationError, match="sandbox username"):
+            Pty(commands, lambda: transport).start(user=user)
 
 
 @pytest.mark.asyncio
 async def test_async_pty_locale_and_user_switching() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert _request_frame(request)["process"]["envs"] == {"TERM": "xterm-256color"}
+        assert request.headers["Authorization"] == "Basic bm9ib2R5Og=="
         return _stream_response(
             {"event": {"start": {"pid": 7}}}, {"event": {"end": {"exitCode": 0}}}
         )
@@ -94,10 +100,8 @@ async def test_async_pty_locale_and_user_switching() -> None:
 
     try:
         pty = AsyncPty(AsyncCommands(provide), provide)
-        handle = await pty.start()
+        handle = await pty.start(user="nobody")
         assert (await handle.wait()).exit_code == 0
-        with pytest.raises(ConfigurationError, match="user switching"):
-            await pty.start(user="nobody")
     finally:
         await transport.close()
 

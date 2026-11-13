@@ -126,8 +126,14 @@ result = sandbox.commands.run("python --version")
 print(result.exit_code, result.stdout, result.stderr)
 ```
 
-命令使用沙箱配置的默认系统用户。当前 EnvD 不支持切换用户，显式传入 `user` 会抛出
-`ConfigurationError`，不会静默以默认用户执行。
+默认使用沙箱配置的系统用户。使用支持用户切换的 EnvD 模板时，可以指定沙箱内已有的用户：
+
+```python
+result = sandbox.commands.run("id -un", user="nobody", cwd="/tmp")
+terminal = sandbox.pty.start(user="nobody", cwd="/tmp")
+```
+
+`user` 不创建用户；工作目录需要该用户有访问权限。旧 EnvD 可能忽略身份选择，不要在未经验证的模板上依赖该参数隔离权限。
 
 后台命令返回 `CommandHandle`，可以继续输入、发送信号或等待结果：
 

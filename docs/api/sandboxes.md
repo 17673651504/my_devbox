@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | `templateID` | string | 是 | [模板 ID 或别名](./templates.md)，如 `default` |
 | `buildID` | string | 否 | 固定 Build，省略时使用所选模板的最新可用 Build |
-| `timeout` | integer | 否 | 存活秒数，1–86400，通常默认 300，由服务配置决定 |
+| `timeout` | integer | 否 | 存活秒数，1–86400；省略或传 `0` 使用服务默认值（通常 300 秒） |
 | `envVars` | object | 否 | 沙箱环境变量，值为字符串 |
 | `metadata` | object | 否 | 业务标签，值为字符串 |
 | `autoPause` | boolean | 否 | 到期后暂停而非销毁，默认 false；与 E2B 请求字段一致 |
@@ -100,6 +100,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 请求体可省略，或传入 `{"timeout":300}`。`timeout` 为可选整数，单位秒，范围 1–86400。
 
 可选 `resume` 为 boolean，默认 true。传 `{"resume":false}` 只为运行中的沙箱准备凭证；沙箱已暂停时返回 409 `sandbox_paused`，不会恢复。SDK 自动换凭证在未允许自动恢复时使用此选项。主动调用 `connect()` 或 `resume()` 仍可恢复 `autoResume=false` 的沙箱。
+
+`timeout=0` 等同于省略。连接并恢复暂停沙箱时可传 `autoPause`；设为 false 会同时关闭自动唤醒。仅连接运行中的沙箱时不会修改暂停策略。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
@@ -232,14 +234,14 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 
 ## E2B 兼容范围 {#e2b}
 
-支持 E2B 2.62.x SDK 使用的 `POST /v2/sandboxes`、`GET /v2/sandboxes`、`POST /v2/sandboxes/{sandboxID}/connect`。它们复用上述业务逻辑、鉴权和配额；timeout 的单位仍为秒。E2B 接口返回的 `sandboxID` 使用固定 tunnelId 作为公开别名；所有单沙箱操作同时接受该别名与原 UUID，且仍按当前凭证所属 Namespace 隔离。两种 ID 指向同一个沙箱，不会创建两份资源。
+兼容 `POST /v2/sandboxes`、`GET /v2/sandboxes`、`POST /v2/sandboxes/{sandboxID}/connect`，复用上述业务逻辑、鉴权和配额。E2B 接口返回的 `sandboxID` 使用固定 tunnelId 作为公开别名；单沙箱操作同时接受该别名与原 UUID，仍按当前凭证所属 Namespace 隔离。
 
 DevBox 原 UUID 接口的 `domain` 保持完整访问地址；`/v2`、按公开别名访问或使用官方 E2B SDK/CLI 的 User-Agent 时，响应的 `domain` 为基础域名，供 E2B 客户端拼接地址。DevBox SDK 优先读取 `envdUrl`，无需自行拼接。官方 Python/JS SDK 列表请求的 metadata 额外编码在接口边界解码，支持中文与特殊字符筛选。
 
-Gateway 兼容 `端口-sandboxID.基础域名` 与原 `tunnelId-端口.基础域名`，并接受 `X-Access-Token`；它们使用相同的凭证验证和隧道转发链路。需同时发布兼容版本的 Manager 和 Gateway。官方 SDK 的命令、文件读写、CLI exec 和 EnvD 文件监听已通过本地真实转发链路验证；生产域名、TLS 和虚拟机暂停恢复仍需部署后验收。
+Gateway 兼容 `端口-sandboxID.基础域名` 与原 `tunnelId-端口.基础域名`，并接受 `X-Access-Token`。测试环境已用官方 E2B Python SDK `2.6.2` 验证连接、不传 `user` 的命令执行，以及私有端口匿名 401、带凭证 200；不代表官方 JS SDK 或 CLI 全量兼容。E2B 兼容响应中的 `envdVersion=0.4.0` 是 SDK 能力标识，不是实际 EnvD 构建版本。
 
 SDK 创建接口提供 `network` 参数：Python `{"allow_public_traffic": false}`、JS `{ allowPublicTraffic: false }`，发送为 `network.allowPublicTraffic`。需要配套的 Manager 和 Gateway；不支持的服务端返回 `400 network_policy_unsupported`。未确认服务端执行策略前，不应把 `false` 当成已经生效的访问保护。
 
-磁盘-only 快照、模板构建管理等不在本轮兼容范围内。其他自定义网络策略、`allow_internet_access:false`、MCP、工作负载身份和非空卷挂载不受支持，不能静默忽略。
+仅支持完整内存快照。其他非 null 网络字段（例如 `dnsServers`、`httpsPorts`）或 `allow_internet_access:false` 返回 400 `network_policy_unsupported`。创建时非 null 的 `cpuCount`、`volumeMounts`、`iam`、`mcp` 或非空 `Idempotency-Key` 返回 400 `unsupported_create_option`；CPU 规格由模板决定，不支持创建幂等。
 
-恢复请求兼容 E2B 的 `autoPause`；省略时保留原生命周期策略。
+恢复请求也接受 `autoPause`；省略时保留原生命周期策略。DevBox 的 `timeout=0` 和 `limit=0` 是扩展约定；不支持 E2B 的冷恢复、fork、历史指标、沙箱日志或动态网络更新接口。
