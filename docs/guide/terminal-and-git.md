@@ -32,6 +32,8 @@ try {
 
 `rows` 与 `cols` 是终端行列数，会影响程序换行与布局。窗口大小改变时，用 `sandbox.pty.resize(pid, size)` 更新。
 
+可用 `user` 和 `cwd` 指定会话用户和目录。例如 Python `sandbox.pty.start(user="nobody", cwd="/tmp")`，JS `await sandbox.pty.start("/bin/bash", { user: "nobody", cwd: "/tmp" })`。省略 `user` 时使用沙箱默认用户。
+
 终端输出包含 ANSI 颜色、光标或标题控制序列，不是纯文本日志。构建交互界面时应交给终端渲染组件；只需纯文本时优先使用命令接口。
 
 `exit` 结束远端 Shell；`disconnect()` 只断开输出连接。进程退出后不能继续发送输入，但仍可读取已收集的退出结果。

@@ -87,4 +87,18 @@ try {
 
 非零退出码默认抛出 `CommandExitError`。需要自行判断时，Python 传入 `check=False`，JS 传入 `{ check: false }`。
 
-命令使用沙箱默认系统用户。不要将未受信任的输入直接拼接到 Shell 命令中。
+## 指定执行用户
+
+省略 `user` 时使用沙箱默认用户。指定的用户须已存在，并有权访问 `cwd`。
+
+::: code-group
+```python [Python]
+result = sandbox.commands.run("id", user="nobody", cwd="/tmp")
+```
+
+```js [JavaScript / TypeScript]
+const result = await sandbox.commands.run("id", { user: "nobody", cwd: "/tmp" });
+```
+:::
+
+不要将未受信任的输入直接拼接到 Shell 命令中。

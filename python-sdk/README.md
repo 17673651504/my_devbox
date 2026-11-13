@@ -100,12 +100,11 @@ Git 的 clone/pull/push 默认 `timeout=300`。PTY 和目录监听不设流读�
 `pause()` 保留内存和磁盘并关闭当前数据面连接；`resume(timeout=300)` 恢复同一沙箱并用响应中的新 `connectToken` 覆盖暂停前的 Token，返回当前对象。
 Manager 不自动过期清理暂停记录，目前仅支持原节点恢复；实际恢复仍依赖节点、快照和隧道可用。暂停后要保留沙箱，应调用 `close()`，不要退出会自动 `kill()` 的 Sandbox 上下文。
 已有命令/PTY/监听句柄应在暂停前断开，恢复后按 PID 重新连接或重新建立监听，SDK 不自动重放命令。
-生命周期 timeout 最大为 86400 秒（24 小时）；创建与恢复的正数 timeout 至少为 10 秒。运行后可用
-`set_timeout(10)` 验证短时自动销毁，后台清理异步执行。创建时可传
+SDK 的生命周期时长参数接受 1–86400 秒。创建时可传
 `lifecycle=SandboxLifecycle(on_timeout="pause", auto_resume=True)`，让超时行为改为内存快照暂停。
 `auto_resume=True` 允许兼容的 Gateway 在首次数据面请求到达时唤醒沙箱；显式 `connect()`/`resume()` 始终可用。
 SDK 会在 `connectToken` 到期前通过 Manager 静默更新连接凭证，不延长沙箱生命周期，用户无需管理 Token。
-仅文件系统快照暂不开放。
+暂停保存完整内存和磁盘状态。创建时传入 `network={"allow_public_traffic": False}`，可要求访问应用端口时携带连接凭证；省略时允许匿名访问应用端口。
 请求超时不改变沙箱生存时间，也不能覆盖服务器入口代理的超时限制。
 
 部署新版 Manager 后，使用现有连接环境变量运行生命周期专项验证：

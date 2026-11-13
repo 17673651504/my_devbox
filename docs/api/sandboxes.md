@@ -232,15 +232,17 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 
 暂停对象不包含 `domain`、`tunnelId`、`connectToken`、`tokenExpiration`。读取状态不会触发恢复；需要访问入口时调用 connect。
 
-## E2B 兼容范围 {#e2b}
+## 访问应用端口 {#application-port}
+
+创建沙箱时设置 `network.allowPublicTraffic=false`，应用端口访问需要连接凭证。向应用端口的 HTTPS 地址发送请求时，传入 `X-Access-Token: <envdAccessToken>`；未带凭证返回 401。DevBox SDK 的写法见[创建参数](../reference/sdk.md#创建参数)。
+
+## 使用 E2B 客户端 {#e2b}
 
 兼容 `POST /v2/sandboxes`、`GET /v2/sandboxes`、`POST /v2/sandboxes/{sandboxID}/connect`，复用上述业务逻辑、鉴权和配额。E2B 接口返回的 `sandboxID` 使用固定 tunnelId 作为公开别名；单沙箱操作同时接受该别名与原 UUID，仍按当前凭证所属 Namespace 隔离。
 
-DevBox 原 UUID 接口的 `domain` 保持完整访问地址；`/v2`、按公开别名访问或使用官方 E2B SDK/CLI 的 User-Agent 时，响应的 `domain` 为基础域名，供 E2B 客户端拼接地址。DevBox SDK 优先读取 `envdUrl`，无需自行拼接。官方 Python/JS SDK 列表请求的 metadata 额外编码在接口边界解码，支持中文与特殊字符筛选。
+E2B 客户端使用响应中的基础域名 `domain` 拼接端口地址。直接访问 EnvD 时使用完整的 `envdUrl`。列表可按 metadata 筛选，包括中文和特殊字符。
 
-Gateway 兼容 `端口-sandboxID.基础域名` 与原 `tunnelId-端口.基础域名`，并接受 `X-Access-Token`。测试环境已用官方 E2B Python SDK `2.6.2` 验证连接、不传 `user` 的命令执行，以及私有端口匿名 401、带凭证 200；不代表官方 JS SDK 或 CLI 全量兼容。E2B 兼容响应中的 `envdVersion=0.4.0` 是 SDK 能力标识，不是实际 EnvD 构建版本。
-
-SDK 创建接口提供 `network` 参数：Python `{"allow_public_traffic": false}`、JS `{ allowPublicTraffic: false }`，发送为 `network.allowPublicTraffic`。需要配套的 Manager 和 Gateway；不支持的服务端返回 `400 network_policy_unsupported`。未确认服务端执行策略前，不应把 `false` 当成已经生效的访问保护。
+Python 客户端可通过 `get_host(8080)` 获取[应用端口地址](#application-port)。执行命令时省略 `user` 会使用沙箱默认用户。
 
 仅支持完整内存快照。其他非 null 网络字段（例如 `dnsServers`、`httpsPorts`）或 `allow_internet_access:false` 返回 400 `network_policy_unsupported`。创建时非 null 的 `cpuCount`、`volumeMounts`、`iam`、`mcp` 或非空 `Idempotency-Key` 返回 400 `unsupported_create_option`；CPU 规格由模板决定，不支持创建幂等。
 
