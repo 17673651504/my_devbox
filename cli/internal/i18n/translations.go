@@ -363,6 +363,10 @@ func init() {
 				ZH: "终端会话在沙箱内的工作目录",
 				EN: "Working directory for the terminal session inside the sandbox",
 			},
+			FlagUser: Message{
+				ZH: "沙箱内以指定用户运行命令或打开终端",
+				EN: "Run the command or open the terminal as the specified user inside the sandbox",
+			},
 			FlagState: Message{
 				ZH: "按状态过滤: running 或 paused（可重复）",
 				EN: "Filter by state: running or paused (repeatable)",

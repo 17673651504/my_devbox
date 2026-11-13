@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,8 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process/processconnect"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 
@@ -24,16 +24,24 @@ const relayTokenCookie = "relay_token"
 
 // relayInterceptor attaches the sandbox connection credentials defined in the
 // DevBox processes API: the relay token cookie plus the sandbox id/port headers.
+// A non-empty user additionally selects the sandbox user for process starts via
+// HTTP Basic auth with an empty password, as the envd contract specifies.
 type relayInterceptor struct {
 	sandboxID    string
 	connectToken string
 	sandboxPort  int
+	user         string
 }
 
 func (i *relayInterceptor) attach(h http.Header) {
 	h.Set("Cookie", relayTokenCookie+"="+i.connectToken)
 	h.Set("E2B-Sandbox-Id", i.sandboxID)
 	h.Set("E2B-Sandbox-Port", strconv.Itoa(i.sandboxPort))
+	if i.user != "" {
+		// The username alone selects the sandbox user; the password stays empty.
+		encoded := base64.StdEncoding.EncodeToString([]byte(i.user + ":"))
+		h.Set("Authorization", "Basic "+encoded)
+	}
 }
 
 // WrapUnary implements connect.Interceptor.
@@ -63,15 +71,26 @@ func (i *relayInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 // the Connect protocol (JSON codecs); the http.Client must NOT carry a global
 // timeout or long-running command streams would be cut off.
 type ProcessClient struct {
-	rpc processconnect.ProcessClient
+	rpc process.ProcessClient
 }
 
 // NewProcessClient builds a client against the sandbox domain. The domain
 // embeds the envd port (e.g. https://<tunnel>-49983.host); when it cannot be
-// parsed the default 49983 is used.
-func NewProcessClient(domain, sandboxID, connectToken string, httpClient *http.Client) (*ProcessClient, error) {
+// parsed the default 49983 is used. A non-empty user is sent via HTTP Basic
+// auth on every request so envd starts processes as that sandbox user. All
+// traffic is logged at debug level (see envdLoggingTransport) so `-v` runs
+// show the data-plane requests and responses.
+func NewProcessClient(domain, sandboxID, connectToken, user string, httpClient *http.Client) (*ProcessClient, error) {
 	if httpClient == nil {
 		httpClient = &http.Client{}
+	}
+	if httpClient.Transport == nil {
+		httpClient.Transport = http.DefaultTransport
+	}
+	// Only wrap once: re-wrapping an already-instrumented transport would
+	// duplicate log lines when the same http.Client is reused.
+	if _, ok := httpClient.Transport.(*envdLoggingTransport); !ok {
+		httpClient.Transport = &envdLoggingTransport{base: httpClient.Transport}
 	}
 	u, err := url.Parse(domain)
 	if err != nil {
@@ -80,14 +99,19 @@ func NewProcessClient(domain, sandboxID, connectToken string, httpClient *http.C
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidDomainScheme), domain)
 	}
-	rpc := processconnect.NewProcessClient(
+	rpc := process.NewProcessClient(
 		httpClient,
 		domain,
 		connect.WithInterceptors(&relayInterceptor{
 			sandboxID:    sandboxID,
 			connectToken: connectToken,
 			sandboxPort:  envdPortFromDomain(u),
+			user:         user,
 		}),
+		// JSON codec：与 processes API 文档对齐（application/json /
+		// application/connect+json），-v 日志里请求体直接可读；
+		// envd（connect-go 服务端）默认支持 JSON codec。
+		connect.WithProtoJSON(),
 	)
 	return &ProcessClient{rpc: rpc}, nil
 }

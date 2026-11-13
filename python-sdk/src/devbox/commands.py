@@ -585,9 +585,13 @@ def _command_body(
 
 
 def _process_headers(user: str | None) -> dict[str, str]:
+    headers = {"Keepalive-Ping-Interval": "50"}
     if user is not None:
-        raise ConfigurationError("user switching is not supported by the current EnvD service")
-    return {"Keepalive-Ping-Interval": "50"}
+        if not user or user != user.strip() or ":" in user or "\x00" in user:
+            raise ConfigurationError("user must be a non-empty sandbox username")
+        encoded = base64.b64encode(f"{user}:".encode()).decode("ascii")
+        headers["Authorization"] = f"Basic {encoded}"
+    return headers
 
 
 def _first_pid(events: Iterator[Mapping[str, Any]], action: str) -> int:

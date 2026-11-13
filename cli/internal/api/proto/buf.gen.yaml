@@ -5,4 +5,6 @@ plugins:
     opt: paths=source_relative
   - local: ["go", "run", "connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.21.1"]
     out: ../processgen
-    opt: paths=source_relative
+    opt:
+      - paths=source_relative
+      - package_suffix=

@@ -118,6 +118,7 @@ type SandboxMessages struct {
 	FlagFormat          Message
 	FlagDuration        Message
 	FlagBackground      Message
+	FlagUser            Message
 }
 
 type TemplateMessages struct {

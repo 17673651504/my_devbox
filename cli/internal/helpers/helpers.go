@@ -18,10 +18,10 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/term"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/terminal"
 )
 
 // ValidateTimeoutSeconds validates the timeout/duration input: the valid range is 10-86400 seconds,
@@ -71,6 +71,35 @@ func ParseStates(values []string) ([]api.SandboxState, error) {
 		states = append(states, st)
 	}
 	return states, nil
+}
+
+// ParseKV parses repeated key=value arguments into a map; split on the first "=",
+// the value may contain further "=" characters.
+func ParseKV(pairs []string) (map[string]string, error) {
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]string, len(pairs))
+	for _, p := range pairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok || k == "" {
+			return nil, fmt.Errorf(i18n.T(i18n.Msg.Parse.ExpectedKeyValue), p)
+		}
+		out[k] = v
+	}
+	return out, nil
+}
+
+// ParseMetadata parses the --metadata argument; empty returns nil.
+func ParseMetadata(pairs []string) (*map[string]string, error) {
+	m, err := ParseKV(pairs)
+	if err != nil {
+		return nil, err
+	}
+	if len(m) == 0 {
+		return nil, nil
+	}
+	return &m, nil
 }
 
 // StrFromPtr converts a nullable string to a display value.
@@ -153,20 +182,20 @@ func MissingDomainError() error {
 // RunTerminalSession validates the connection info from the sandbox response
 // and opens the interactive terminal, printing the connecting/closing notices
 // to msgs. The raw session I/O flows through in/out (typically os.Stdin and
-// os.Stdout).
-func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, sb *api.Sandbox, cwd string, envs map[string]string) error {
+// os.Stdout). A non-empty user opens the terminal as that sandbox user.
+func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, sb *api.Sandbox, cwd, user string, envs map[string]string) error {
 	if sb.Domain == nil || *sb.Domain == "" {
 		return MissingDomainError()
 	}
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
 	}
-	pc, err := client.NewProcessClient(*sb.Domain, sb.SandboxID, *sb.ConnectToken, nil)
+	pc, err := client.NewProcessClient(*sb.Domain, sb.SandboxID, *sb.ConnectToken, user, nil)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
-	end, err := term.New(pc, in, out, cwd, envs).Run(ctx)
+	end, err := terminal.New(pc, in, out, cwd, envs).Run(ctx)
 	if err != nil {
 		return err
 	}

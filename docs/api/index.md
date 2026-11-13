@@ -34,7 +34,7 @@ E2B-Sandbox-Id: <sandboxID>
 E2B-Sandbox-Port: 49983
 ```
 
-直接使用 `envdUrl`（旧版响应使用 `domain`），不自行拼接集群或区域后缀。`tokenExpiration` 是 Token 的 Unix 到期秒数；临近到期时调用管理接口 connect 获取最新凭证，并更新后续请求。手动 resume 后也使用响应中的最新地址与凭证。响应新增 E2B 兼容的 `envdAccessToken`，DevBox SDK 同时发送该凭证和兼容 Cookie；官方 E2B 客户端的直通限制见 [E2B 兼容范围](./sandboxes.md#e2b)。
+使用响应中的完整地址 `envdUrl`，无需拼接域名。`tokenExpiration` 是凭证的 Unix 到期秒数；临近到期时调用 connect 获取新凭证，resume 后也使用返回的最新地址与凭证。访问沙箱内的应用见[应用端口](./sandboxes.md#application-port)。
 
 启用 `lifecycle.autoResume` 时，对暂停沙箱的访问可触发恢复，首个请求需要等待。客户端应给恢复请求留出足够的等待时间。请求断开不意味着沙箱、进程或文件写入操作已撤销。
 

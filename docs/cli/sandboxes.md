@@ -25,6 +25,7 @@ devbox sandbox create <templateID>
 | `-d, --detach` | 只创建沙箱，不进入终端 |
 | `--lifecycle.ontimeout` | 到期动作：`pause` 或 `kill` |
 | `--lifecycle.autoresume` | 到期暂停后允许网关自动恢复，需配合 `--lifecycle.ontimeout pause` |
+| `--network.allow-public-traffic=false` | 应用端口访问需要连接凭证；省略此选项时允许匿名访问应用端口 |
 
 ### 只创建不进终端
 
@@ -45,7 +46,7 @@ devbox sandbox connect <sandboxID> -c /tmp -e MYTEST=123
 
 | 参数 | 说明 |
 | --- | --- |
-| `-t, --timeout` | 沙箱存活时间，单位秒（10-86400）；省略则保持当前 TTL |
+| `-t, --timeout` | 存活时间，单位秒（10–86400）；省略时，运行中的沙箱不延长，暂停的沙箱恢复后使用服务默认时长 |
 | `-c, --cwd` | 终端会话在沙箱内的工作目录 |
 | `-e, --env` | 终端会话的环境变量，`key=value`，可重复 |
 
@@ -100,7 +101,7 @@ devbox sandbox resume <sandboxID> -t 600
 
 | 参数 | 说明 |
 | --- | --- |
-| `-t, --timeout` | 恢复后的存活时间，单位秒（10-86400）；省略则保持当前 TTL |
+| `-t, --timeout` | 恢复后的存活时间，单位秒（10–86400）；省略时使用服务默认时长 |
 
 ## 重设存活时间
 

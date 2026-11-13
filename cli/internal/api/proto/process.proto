@@ -1,14 +1,14 @@
 // Code copied from the sandbox-local envd contract:
 // ConchSandbox/envd (based on e2b-dev/infra), packages/envd/spec/process/process.proto.
 // It is the source of truth for the process.Process ConnectRPC service; the
-// generated Go code lives in ../../processgen. Regenerate with:
+// generated Go code lives in ../processgen. Regenerate with:
 //
 //	go generate ./...
 syntax = "proto3";
 
 package process;
 
-option go_package = "github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process";
+option go_package = "github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen;process";
 
 service Process {
     rpc List(ListRequest) returns (ListResponse);

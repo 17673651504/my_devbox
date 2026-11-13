@@ -22,17 +22,20 @@ describe("Commands", () => {
     expectTypeOf(dynamic).returns.toEqualTypeOf<Promise<CommandResult | CommandHandle>>();
   });
 
-  it("rejects unsupported user switching before starting a process", async () => {
-    const provide = vi.fn(async (): Promise<Transport> => {
-      throw new Error("unexpected transport");
-    });
-    const commands = new Commands(provide);
-    await expect(commands.run("id", { user: "nobody" })).rejects.toBeInstanceOf(ConfigurationError);
-    await expect(
-      new Pty(commands, provide).start("/bin/bash", { user: "nobody" }),
-    ).rejects.toBeInstanceOf(ConfigurationError);
-    expect(provide).not.toHaveBeenCalled();
-  });
+  it.each(["", " nobody", "user:name"])(
+    "rejects invalid user %j before starting a process",
+    async (user) => {
+      const provide = vi.fn(async (): Promise<Transport> => {
+        throw new Error("unexpected transport");
+      });
+      const commands = new Commands(provide);
+      await expect(commands.run("id", { user })).rejects.toBeInstanceOf(ConfigurationError);
+      await expect(new Pty(commands, provide).start("/bin/bash", { user })).rejects.toBeInstanceOf(
+        ConfigurationError,
+      );
+      expect(provide).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([undefined, { LANG: "C", TERM: "dumb" }])(
     "does not force a terminal locale",
@@ -40,7 +43,11 @@ describe("Commands", () => {
       agent = mockAgent();
       agent
         .get("https://runtime.example.test")
-        .intercept({ path: "/process.Process/Start", method: "POST" })
+        .intercept({
+          path: "/process.Process/Start",
+          method: "POST",
+          headers: { authorization: "Basic bm9ib2R5Og==" },
+        })
         .reply(({ body }) => {
           const payload = JSON.parse(
             Buffer.from(body as Uint8Array)
@@ -61,7 +68,10 @@ describe("Commands", () => {
       const transport = new Transport("https://runtime.example.test", { dispatcher: agent });
       try {
         const provide = async () => transport;
-        const session = await new Pty(new Commands(provide), provide).start("/bin/bash", { envs });
+        const session = await new Pty(new Commands(provide), provide).start("/bin/bash", {
+          envs,
+          user: "nobody",
+        });
         expect((await session.wait()).exitCode).toBe(0);
       } finally {
         await transport.close();
@@ -73,7 +83,11 @@ describe("Commands", () => {
     agent = mockAgent();
     agent
       .get("https://runtime.example.test")
-      .intercept({ path: "/process.Process/Start", method: "POST" })
+      .intercept({
+        path: "/process.Process/Start",
+        method: "POST",
+        headers: { authorization: "Basic bm9ib2R5Og==" },
+      })
       .reply(
         200,
         connectBody(
@@ -96,7 +110,7 @@ describe("Commands", () => {
     const transport = new Transport("https://runtime.example.test", { dispatcher: agent });
     const commands = new Commands(async () => transport);
     const stdout = vi.fn();
-    const result = await commands.run("echo test", { onStdout: stdout });
+    const result = await commands.run("echo test", { onStdout: stdout, user: "nobody" });
     expect(result).toEqual({ exitCode: 0, stdout: "out", stderr: "err", pid: 42 });
     expect(stdout).toHaveBeenCalledWith("out");
   });

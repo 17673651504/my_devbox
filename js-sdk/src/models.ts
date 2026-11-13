@@ -104,6 +104,10 @@ export interface OomKill {
 export interface EnvdMetrics {
   timestamp: Date;
   cpuCount: number;
+  cpuPossible?: number;
+  cpuTarget?: number;
+  cpuTargetAttempts?: number;
+  cpuWritePendingMs?: number;
   cpuUsedPct: number;
   memTotal: number;
   memUsed: number;
@@ -249,10 +253,14 @@ export function parseFileInfo(value: WireObject): FileInfo {
 }
 
 export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
-  const oomKills = value["oom_kills"];
+  const oomKills = value.oom_kills;
   return {
     timestamp: dateValue(pick(value, "ts")),
     cpuCount: numberValue(pick(value, "cpu_count")),
+    cpuPossible: optionalNumber(value.cpu_possible),
+    cpuTarget: optionalNumber(value.cpu_target),
+    cpuTargetAttempts: optionalNumber(value.cpu_target_attempts),
+    cpuWritePendingMs: optionalNumber(value.cpu_write_pending_ms),
     cpuUsedPct: numberValue(pick(value, "cpu_used_pct")),
     memTotal: numberValue(pick(value, "mem_total")),
     memUsed: numberValue(pick(value, "mem_used")),

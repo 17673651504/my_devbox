@@ -208,6 +208,10 @@ class EnvdMetrics:
     disk_total: int
     disk_used: int
     oom_kills: tuple[OomKill, ...] | None = None
+    cpu_possible: int | None = None
+    cpu_target: int | None = None
+    cpu_target_attempts: int | None = None
+    cpu_write_pending_ms: int | None = None
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> EnvdMetrics:
@@ -232,6 +236,10 @@ class EnvdMetrics:
             disk_total=_integer(_pick(value, "disk_total")),
             disk_used=_integer(_pick(value, "disk_used")),
             oom_kills=oom_kills,
+            cpu_possible=_optional_int(value.get("cpu_possible")),
+            cpu_target=_optional_int(value.get("cpu_target")),
+            cpu_target_attempts=_optional_int(value.get("cpu_target_attempts")),
+            cpu_write_pending_ms=_optional_int(value.get("cpu_write_pending_ms")),
         )
 
 
