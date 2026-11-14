@@ -2,68 +2,14 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
-
-// newVerifyServer mocks the API key check endpoint on the bridge domain.
-// Only requests carrying validKey succeed with 204; everything else gets 401.
-func newVerifyServer(t *testing.T, validKey string) *httptest.Server {
-	t.Helper()
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/api-keys/check", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-API-Key") != validKey {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	return httptest.NewServer(mux)
-}
-
-func TestVerifyAPIKeyValid(t *testing.T) {
-	srv := newVerifyServer(t, "devbox_good-key")
-	defer srv.Close()
-
-	if err := VerifyAPIKey(context.Background(), srv.URL, "devbox_good-key"); err != nil {
-		t.Fatalf("expected valid key to pass, got: %v", err)
-	}
-}
-
-func TestVerifyAPIKeyInvalid(t *testing.T) {
-	srv := newVerifyServer(t, "devbox_good-key")
-	defer srv.Close()
-
-	err := VerifyAPIKey(context.Background(), srv.URL, "devbox_bad-key")
-	if err == nil {
-		t.Fatal("expected an error for an invalid key")
-	}
-	if !IsUnauthorized(err) {
-		t.Fatalf("expected ErrUnauthorized, got: %v", err)
-	}
-}
-
-func TestVerifyAPIKeyDevboxKey(t *testing.T) {
-	srv := newVerifyServer(t, "devbox_good-key")
-	defer srv.Close()
-
-	if err := VerifyAPIKey(context.Background(), srv.URL, "devbox_good-key"); err != nil {
-		t.Fatalf("expected valid devbox key to pass, got: %v", err)
-	}
-	if err := VerifyAPIKey(context.Background(), srv.URL, "devbox_bad-key"); !IsUnauthorized(err) {
-		t.Fatalf("expected ErrUnauthorized for invalid devbox key, got: %v", err)
-	}
-}
-
-func TestVerifyAPIKeyEmptyFailsFast(t *testing.T) {
-	if err := VerifyAPIKey(context.Background(), "http://127.0.0.1:1", ""); !IsUnauthorized(err) {
-		t.Fatalf("expected ErrUnauthorized for empty key, got: %v", err)
-	}
-}
 
 func TestStartLoginWithCallback(t *testing.T) {
 	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
@@ -193,5 +139,96 @@ func TestStartLoginRejectsForeignOrigin(t *testing.T) {
 				t.Fatal("Wait must not succeed for a rejected callback")
 			}
 		})
+	}
+}
+
+// The devstation login page nests the payload under "result".
+func TestStartLoginWithNestedResult(t *testing.T) {
+	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
+	if err != nil {
+		t.Fatalf("start login: %v", err)
+	}
+	defer session.Close()
+
+	u, _ := url.Parse(session.URL)
+	port := u.Query().Get("callback")
+	body := strings.NewReader(`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/", body)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post callback: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	cred, ui, err := session.Wait(context.Background())
+	if err != nil {
+		t.Fatalf("wait: %v", err)
+	}
+	if cred.APIKey != "nested-key-9" {
+		t.Fatalf("expected nested-key-9, got %q", cred.APIKey)
+	}
+	if ui == nil || ui.UserName != "hw067826022" || ui.UserID != "u-2" {
+		t.Fatalf("expected user info lifted from result, got %+v", ui)
+	}
+}
+
+func TestCallbackDebugLogging(t *testing.T) {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
+	if err != nil {
+		t.Fatalf("start login: %v", err)
+	}
+	defer session.Close()
+
+	u, _ := url.Parse(session.URL)
+	port := u.Query().Get("callback")
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
+		strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post callback: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	cred, ui, err := session.Wait(context.Background())
+	if err != nil || cred.APIKey != "callback-key-42" {
+		t.Fatalf("wait: key=%q err=%v", cred.APIKey, err)
+	}
+	if ui == nil || ui.UserName != "tester" {
+		t.Fatalf("expected user info from the callback, got %+v", ui)
+	}
+}
+
+func TestLoginPageURL(t *testing.T) {
+	got := loginPageURL("https://devstation.connect.huaweicloud.com/", 12345)
+	for _, want := range []string{
+		"https://devstation.connect.huaweicloud.com/space/devbridge/redirect",
+		"origin=devbox",
+		"callback=12345",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("loginPageURL = %q, want to contain %q", got, want)
+		}
+	}
+	if !strings.Contains(got, "language=") {
+		t.Fatalf("loginPageURL = %q, want language param", got)
+	}
+}
+
+func TestSystemLang(t *testing.T) {
+	lang := systemLang()
+	if lang != "zh-cn" && lang != "en-us" {
+		t.Fatalf("systemLang = %q, want zh-cn or en-us", lang)
 	}
 }

@@ -1,7 +1,7 @@
-// Package term wires the local terminal to a sandbox PTY: it puts the local
+// Package terminal wires the local terminal to a sandbox PTY: it puts the local
 // terminal into raw mode, forwards keystrokes to the remote process and
 // renders remote output locally, like an SSH session.
-package term
+package terminal
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 
 	"golang.org/x/term"
@@ -19,6 +19,11 @@ import (
 // without producing any output: a gateway wake-up of a paused sandbox
 // (autoResume) or a lingering previous stream can tear the first stream down.
 const maxStartAttempts = 3
+
+// enableVT enables ANSI escape sequence processing on out so remote PTY
+// output renders correctly. Unix terminals process ANSI escapes by default,
+// so this default is a no-op; vt_windows.go overrides it for Windows consoles.
+var enableVT = func(f *os.File) error { return nil }
 
 // Session runs one interactive terminal against a sandbox PTY.
 type Session struct {

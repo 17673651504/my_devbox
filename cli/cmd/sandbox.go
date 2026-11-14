@@ -7,12 +7,11 @@ import (
 	"time"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/process"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/parse"
 
 	"github.com/spf13/cobra"
 )
@@ -36,6 +35,7 @@ var (
 	sandboxCreateNetworkAllowPublic bool
 	sandboxCreateDetach             bool
 	sandboxCreateCwd                string
+	sandboxCreateUser               string
 )
 
 // sandboxCreateCmd implements `devbox sandbox create <templateID>`, corresponding to POST /sandboxes.
@@ -68,10 +68,10 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("build-id") {
 		req.BuildID = api.PString(sandboxCreateBuildID)
 	}
-	if req.Metadata, err = parse.ParseMetadata(sandboxCreateMetadata); err != nil {
+	if req.Metadata, err = helpers.ParseMetadata(sandboxCreateMetadata); err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidMetadata), err)
 	}
-	envMap, err := parse.ParseKV(sandboxCreateEnv)
+	envMap, err := helpers.ParseKV(sandboxCreateEnv)
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
@@ -107,7 +107,7 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxCreateCwd, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxCreateCwd, sandboxCreateUser, envMap)
 }
 
 // sandboxListCmd's flag bound variables.
@@ -395,6 +395,7 @@ var (
 	sandboxConnectTimeout int32
 	sandboxConnectCwd     string
 	sandboxConnectEnv     []string
+	sandboxConnectUser    string
 )
 
 // sandboxConnectCmd implements `devbox sandbox connect <sandboxID>`, corresponding to POST /sandboxes/{id}/connect.
@@ -431,11 +432,11 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	envMap, err := parse.ParseKV(sandboxConnectEnv)
+	envMap, err := helpers.ParseKV(sandboxConnectEnv)
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxConnectCwd, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxConnectCwd, sandboxConnectUser, envMap)
 }
 
 // sandboxTimeoutCmd's flag bound variables.
@@ -515,6 +516,7 @@ var (
 	sandboxExecBackground bool
 	sandboxExecCwd        string
 	sandboxExecEnv        []string
+	sandboxExecUser       string
 )
 
 // sandboxExecCmd implements `devbox sbx exec <sandboxID> <command...>`.
@@ -544,7 +546,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	envMap, err := parse.ParseKV(sandboxExecEnv)
+	envMap, err := helpers.ParseKV(sandboxExecEnv)
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
@@ -559,7 +561,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
 	}
-	pc, err := client.NewProcessClient(*sb.Domain, args[0], *sb.ConnectToken, nil)
+	pc, err := client.NewProcessClient(*sb.Domain, args[0], *sb.ConnectToken, sandboxExecUser, nil)
 	if err != nil {
 		return err
 	}
@@ -599,6 +601,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
+	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
@@ -631,6 +635,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
 	sandboxConnectCmd.Flags().StringArrayVarP(&sandboxConnectEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnvTerm))
+	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 
 	sandboxTimeoutCmd.Flags().Int32VarP(&sandboxTimeoutValue, "timeout", "t", 300,
 		i18n.T(i18n.Msg.Sandbox.FlagNewTimeout))
@@ -646,6 +652,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
 	sandboxExecCmd.Flags().StringArrayVarP(&sandboxExecEnv, "env", "e", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagEnv))
+	sandboxExecCmd.Flags().StringVarP(&sandboxExecUser, "user", "u", "",
+		i18n.T(i18n.Msg.Sandbox.FlagUser))
 	// Everything after the sandbox ID is passed through to the remote command.
 	sandboxExecCmd.Flags().SetInterspersed(false)
 

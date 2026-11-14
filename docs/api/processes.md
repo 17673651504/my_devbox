@@ -18,6 +18,8 @@
 
 `POST /process.Process/Start`
 
+默认使用沙箱配置的用户。可选请求头 `Authorization: Basic <base64(username:)>` 用于指定已有沙箱用户（密码为空）；仍需单独提供连接凭证。Python 和 JS SDK 的命令执行和 PTY 支持 `user` 参数，需要配套 EnvD 版本。
+
 | Body 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `process.cmd` | string | 必填，可执行程序；执行 Shell 命令时指定 `/bin/bash` |

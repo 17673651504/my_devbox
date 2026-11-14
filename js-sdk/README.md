@@ -90,12 +90,11 @@ Git 的 clone/pull/push 默认 `timeoutMs=300000`。PTY 和目录监听不设总
 
 `pause()` 保留内存和磁盘并关闭当前数据面连接；`resume({ timeout: 300 })` 恢复同一沙箱并用响应中的新 `connectToken` 覆盖暂停前的 Token，返回当前对象。
 Manager 不自动过期清理暂停记录，目前仅支持原节点恢复；实际恢复仍依赖节点、快照和隧道可用。已有命令/PTY/监听句柄应在暂停前断开，恢复后按 PID 重新连接或重新建立监听，SDK 不自动重放命令。
-生命周期 timeout 最大为 86400 秒（24 小时）；创建与恢复的正数 timeout 至少为 10 秒。运行后可用
-`setTimeout(10)` 验证短时自动销毁，后台清理异步执行。创建时可传
+SDK 的生命周期时长参数接受 1–86400 秒。创建时可传
 `lifecycle: { onTimeout: "pause", autoResume: true }`，让超时行为改为内存快照暂停。
 `autoResume: true` 允许兼容的 Gateway 在首次数据面请求到达时唤醒沙箱；显式 `connect()`/`resume()` 始终可用。
 SDK 会在 `connectToken` 到期前通过 Manager 静默更新连接凭证，不延长沙箱生命周期，用户无需管理 Token。
-仅文件系统快照暂不开放。
+暂停保存完整内存和磁盘状态。创建时传入 `network: { allowPublicTraffic: false }`，可要求访问应用端口时携带连接凭证；省略时允许匿名访问应用端口。
 请求超时不改变沙箱生存时间，也不能覆盖服务器入口代理的超时限制。
 
 部署新版 Manager 后，使用现有连接环境变量运行生命周期专项验证：
@@ -127,8 +126,14 @@ const result = await process.wait();
 `sandbox.commands.connect(process.pid)` 重新连接；重连只接收新输出，不回放断开期间的内容。
 
 非零退出码默认抛出 `CommandExitError`。使用 `{ check: false }` 可以直接读取退出结果。
-命令使用沙箱配置的默认系统用户。当前 EnvD 不支持切换用户，显式传入 `user` 会抛出
-`ConfigurationError`，不会静默以默认用户执行。
+默认使用沙箱配置的系统用户。使用支持用户切换的 EnvD 模板时，可以指定沙箱内已有的用户：
+
+```js
+const result = await sandbox.commands.run("id -un", { user: "nobody", cwd: "/tmp" });
+const terminal = await sandbox.pty.start("/bin/bash", { user: "nobody", cwd: "/tmp" });
+```
+
+`user` 不创建用户；工作目录需要该用户有访问权限。旧 EnvD 可能忽略身份选择，不要在未经验证的模板上依赖该参数隔离权限。
 
 ## 文件监听
 
@@ -168,7 +173,8 @@ const envs = await sandbox.envd.getEnvs();
 console.log(health.envdVersion, metrics.cpuUsedPct, envs.DEVBOX_ID);
 ```
 
-`getMetrics()` 返回一次实时采样：CPU 核数与使用率、内存总量/使用量/缓存、磁盘总量/使用量。
+`getMetrics()` 返回一次实时采样：CPU 核数与使用率、CPU hotplug 状态、
+内存总量/使用量/缓存、磁盘总量/使用量。
 `getEnvs()` 返回 EnvD 当前合并后的环境变量。`health()` 直接探测数据面，成功时返回
 `X-Envd-Version`；这些接口与 Manager 的 `getInfo()`/`isRunning()` 不同，不会查询管理面状态。
 

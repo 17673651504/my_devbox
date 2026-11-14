@@ -1,6 +1,6 @@
 // Package proto holds the protobuf specs for the sandbox-local (envd) APIs.
 //
-// process/process.proto is the source of truth for the process.Process
+// process.proto is the source of truth for the process.Process
 // ConnectRPC service; the generated Go code lives in ../processgen.
 // Regenerate with:
 //

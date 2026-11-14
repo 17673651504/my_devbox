@@ -24,7 +24,7 @@
 | `client.sandboxes.create()` | `template`、`timeout`、`build_id` / `buildId`、`envs`、`metadata`、`lifecycle` | 创建沙箱，返回 `Sandbox` |
 | `client.sandboxes.connect()` | `sandbox_id` / `sandboxId`、`timeout=300` | 获取访问凭证，必要时恢复沙箱，返回 `Sandbox` |
 | `client.sandboxes.get()` | `sandbox_id` / `sandboxId` | 返回最新 `SandboxInfo` |
-| `client.sandboxes.list()` | `template`、`states`、`metadata`、`limit`、`next_token` / `nextToken` | 返回 `Page<SandboxInfo>`，包含列表和分页信息 |
+| `client.sandboxes.list()` | `template`、`states`、`metadata`、`started_after` / `startedAfter`、`order`、`limit`、`next_token` / `nextToken` | 返回 `Page<SandboxInfo>`，包含列表和分页信息 |
 | `sandbox.get_info()` / `getInfo()` | 无 | 查询最新 `SandboxInfo`；`sandbox.info` 为本地已获取的信息 |
 | `sandbox.is_running()` / `isRunning()` | 无 | 返回是否处于运行状态；不存在时返回 false |
 | `sandbox.set_timeout()` / `setTimeout()` | `timeout` | 从现在起重设剩余存活秒数，可延长或缩短 |
@@ -58,7 +58,7 @@ const page = await client.sandboxes.list({ template: "default", limit: 1000 });
 | `envs` | 沙箱环境变量，字符串键值 |
 | `metadata` | 沙箱业务标签，字符串键值 |
 | `lifecycle` | 到期销毁或暂停，是否允许自动恢复 |
-| `network` | Python `{"allow_public_traffic": false}` / JS `{ allowPublicTraffic: false }`，控制应用端口是否允许匿名访问；需服务端版本支持 |
+| `network` | Python `{"allow_public_traffic": false}` / JS `{ allowPublicTraffic: false }`，要求应用端口访问携带[连接凭证](../api/sandboxes.md#application-port)；省略时允许匿名访问应用端口 |
 
 沙箱存活时间支持 1～86400 秒。`lifecycle.on_timeout` / `onTimeout` 为 `"kill"` 或 `"pause"`；`auto_resume` / `autoResume` 仅在到期暂停时启用。运行中的 `connect(timeout=...)` 只延长、不缩短期限；恢复时从恢复成功开始计算新期限。
 
@@ -82,7 +82,7 @@ const page = await client.sandboxes.list({ template: "default", limit: 1000 });
 
 | Python / JS 方法 | 主要参数 | 返回与用途 |
 | --- | --- | --- |
-| `run()` | `command`、`background`、`cwd`、`envs`、`stdin`、`timeout` / `timeoutMs`、输出回调、`check` | 前台返回 `CommandResult`；后台返回 `CommandHandle` |
+| `run()` | `command`、`background`、`cwd`、`user`、`envs`、`stdin`、`timeout` / `timeoutMs`、输出回调、`check` | 前台返回 `CommandResult`；后台返回 `CommandHandle` |
 | `connect()` | `pid`、`timeout` / `timeoutMs` | 返回已有进程的 `CommandHandle`，订阅后续输出 |
 | `list()` | 无 | `ProcessInfo` 列表 |
 | `send_stdin()` / `sendStdin()` | `pid`、`data` | 向进程写入标准输入 |
@@ -102,7 +102,7 @@ const page = await client.sandboxes.list({ template: "default", limit: 1000 });
 
 Python 回调为 `on_stdout`、`on_stderr`，JS 为 `onStdout`、`onStderr`。后台模式的回调传给 `handle.wait()`。重连不回放断开期间的输出。见[命令与进程示例](../guide/commands.md)。
 
-命令和终端均支持 `cwd`，目录须存在且执行用户有访问权限；当前不支持 `user` 切换，显式传入会报错。
+命令和终端均支持 `user` 和 `cwd`。省略 `user` 时使用沙箱默认用户；指定的用户须已存在，并有权访问工作目录。
 
 ## 文件
 
@@ -132,11 +132,15 @@ Python 回调为 `on_stdout`、`on_stderr`，JS 为 `onStdout`、`onStderr`。�
 
 | 方法 | 主要参数 | 返回与用途 |
 | --- | --- | --- |
-| `start()` | `command="/bin/bash"`、`size`、`envs`、`cwd` | 创建终端并返回 `CommandHandle` |
+| `start()` | `command="/bin/bash"`、`size`、`envs`、`cwd`、`user` | 创建终端并返回 `CommandHandle` |
 | `connect()` | `pid`、`timeout` / `timeoutMs` | 重新订阅已有终端，返回 `CommandHandle` |
 | `resize()` | `pid`、`size` | 修改终端的 `rows`、`cols` |
 
 通过句柄输入、读取输出、发送信号和断开连接。终端输出可能包含 ANSI 控制序列。见[交互式终端](../guide/terminal-and-git.md)。
+
+## 实时指标
+
+Python `sandbox.envd.get_metrics()` 或 JS `await sandbox.envd.getMetrics()` 返回一次 CPU、内存和磁盘采样。
 
 ## Git
 
@@ -163,11 +167,9 @@ Python 回调为 `on_stdout`、`on_stderr`，JS 为 `onStdout`、`onStderr`。�
 
 Python 也可用 `api_key`、`api_url` 构造参数；JS 对应 `apiKey`、`apiUrl`。显式参数优先于环境变量。通常只需配置 API Key 与服务地址，沙箱连接凭证由 SDK 管理。
 
-创建或连接沙箱时，Manager 返回完整数据面地址 `domain`。SDK 直接使用该地址，不要求用户配置集群名、区域或网关域名。`DEVBOX_GATEWAY_URL`（或 `gateway_url` / `gatewayUrl` 参数）仅用于显式覆盖调试，会替代服务端返回的地址，正常使用不要设置。
+SDK 使用创建或连接响应中的完整 EnvD 地址，无需配置集群名、区域或网关域名。
 
 API Key 用于沙箱管理和模板查询请求，服务据此确定用户归属。执行命令、访问文件等沙箱操作由 SDK 使用连接凭证认证，无需用户再次传入 API Key。
-
-本地示例的 `run_local.py` / `run-local.mjs` 可通过 `DEVBOX_GATEWAY_IP` 临时覆盖 EnvD 地址的 DNS 解析；不需要同时设置 `DEVBOX_GATEWAY_URL`，原请求域名和 TLS 校验仍然保留。该变量仅由本地示例入口读取。
 
 使用 HTTPS 并保留证书校验。不要把 API Key 或沙箱连接凭证写入日志、浏览器地址栏或公开仓库。
 

@@ -237,10 +237,20 @@ async function validateSandbox(client, sandbox, validator) {
       );
       console.log(
         `    cpu=${metrics.cpuCount}x ${metrics.cpuUsedPct.toFixed(2)}%` +
+          ` | hotplug possible=${metrics.cpuPossible} target=${metrics.cpuTarget}` +
+          ` attempts=${metrics.cpuTargetAttempts} pending=${metrics.cpuWritePendingMs}ms` +
           ` | memory=${metrics.memUsed}/${metrics.memTotal} bytes` +
           ` | disk=${metrics.diskUsed}/${metrics.diskTotal} bytes`,
       );
       equal(metrics.cpuCount > 0, true);
+      equal(metrics.cpuPossible !== undefined, true);
+      equal(metrics.cpuTarget !== undefined, true);
+      equal(metrics.cpuTargetAttempts !== undefined, true);
+      equal(metrics.cpuWritePendingMs !== undefined, true);
+      equal(metrics.cpuPossible >= metrics.cpuCount, true);
+      equal(metrics.cpuTarget >= 0, true);
+      equal(metrics.cpuTargetAttempts >= 0, true);
+      equal(metrics.cpuWritePendingMs >= 0, true);
       equal(metrics.cpuUsedPct >= 0 && metrics.cpuUsedPct <= 100, true);
       equal(metrics.memUsed >= 0 && metrics.memUsed <= metrics.memTotal, true);
       equal(metrics.memCache >= 0 && metrics.memCache <= metrics.memTotal, true);

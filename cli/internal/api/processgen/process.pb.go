@@ -1,7 +1,7 @@
 // Code copied from the sandbox-local envd contract:
 // ConchSandbox/envd (based on e2b-dev/infra), packages/envd/spec/process/process.proto.
 // It is the source of truth for the process.Process ConnectRPC service; the
-// generated Go code lives in ../../processgen. Regenerate with:
+// generated Go code lives in ../processgen. Regenerate with:
 //
 //	go generate ./...
 
@@ -9,7 +9,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: process/process.proto
+// source: process.proto
 
 package process
 
@@ -61,11 +61,11 @@ func (x Signal) String() string {
 }
 
 func (Signal) Descriptor() protoreflect.EnumDescriptor {
-	return file_process_process_proto_enumTypes[0].Descriptor()
+	return file_process_proto_enumTypes[0].Descriptor()
 }
 
 func (Signal) Type() protoreflect.EnumType {
-	return &file_process_process_proto_enumTypes[0]
+	return &file_process_proto_enumTypes[0]
 }
 
 func (x Signal) Number() protoreflect.EnumNumber {
@@ -74,7 +74,7 @@ func (x Signal) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Signal.Descriptor instead.
 func (Signal) EnumDescriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{0}
+	return file_process_proto_rawDescGZIP(), []int{0}
 }
 
 type PTY struct {
@@ -86,7 +86,7 @@ type PTY struct {
 
 func (x *PTY) Reset() {
 	*x = PTY{}
-	mi := &file_process_process_proto_msgTypes[0]
+	mi := &file_process_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -98,7 +98,7 @@ func (x *PTY) String() string {
 func (*PTY) ProtoMessage() {}
 
 func (x *PTY) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[0]
+	mi := &file_process_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -111,7 +111,7 @@ func (x *PTY) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PTY.ProtoReflect.Descriptor instead.
 func (*PTY) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{0}
+	return file_process_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *PTY) GetSize() *PTY_Size {
@@ -134,7 +134,7 @@ type ProcessConfig struct {
 
 func (x *ProcessConfig) Reset() {
 	*x = ProcessConfig{}
-	mi := &file_process_process_proto_msgTypes[1]
+	mi := &file_process_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -146,7 +146,7 @@ func (x *ProcessConfig) String() string {
 func (*ProcessConfig) ProtoMessage() {}
 
 func (x *ProcessConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[1]
+	mi := &file_process_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,7 +159,7 @@ func (x *ProcessConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessConfig.ProtoReflect.Descriptor instead.
 func (*ProcessConfig) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{1}
+	return file_process_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ProcessConfig) GetCmd() string {
@@ -205,7 +205,7 @@ type ListRequest struct {
 
 func (x *ListRequest) Reset() {
 	*x = ListRequest{}
-	mi := &file_process_process_proto_msgTypes[2]
+	mi := &file_process_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -217,7 +217,7 @@ func (x *ListRequest) String() string {
 func (*ListRequest) ProtoMessage() {}
 
 func (x *ListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[2]
+	mi := &file_process_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -230,7 +230,7 @@ func (x *ListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{2}
+	return file_process_proto_rawDescGZIP(), []int{2}
 }
 
 type ProcessInfo struct {
@@ -244,7 +244,7 @@ type ProcessInfo struct {
 
 func (x *ProcessInfo) Reset() {
 	*x = ProcessInfo{}
-	mi := &file_process_process_proto_msgTypes[3]
+	mi := &file_process_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -256,7 +256,7 @@ func (x *ProcessInfo) String() string {
 func (*ProcessInfo) ProtoMessage() {}
 
 func (x *ProcessInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[3]
+	mi := &file_process_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -269,7 +269,7 @@ func (x *ProcessInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessInfo.ProtoReflect.Descriptor instead.
 func (*ProcessInfo) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{3}
+	return file_process_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ProcessInfo) GetConfig() *ProcessConfig {
@@ -302,7 +302,7 @@ type ListResponse struct {
 
 func (x *ListResponse) Reset() {
 	*x = ListResponse{}
-	mi := &file_process_process_proto_msgTypes[4]
+	mi := &file_process_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +314,7 @@ func (x *ListResponse) String() string {
 func (*ListResponse) ProtoMessage() {}
 
 func (x *ListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[4]
+	mi := &file_process_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +327,7 @@ func (x *ListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{4}
+	return file_process_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListResponse) GetProcesses() []*ProcessInfo {
@@ -351,7 +351,7 @@ type StartRequest struct {
 
 func (x *StartRequest) Reset() {
 	*x = StartRequest{}
-	mi := &file_process_process_proto_msgTypes[5]
+	mi := &file_process_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -363,7 +363,7 @@ func (x *StartRequest) String() string {
 func (*StartRequest) ProtoMessage() {}
 
 func (x *StartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[5]
+	mi := &file_process_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -376,7 +376,7 @@ func (x *StartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRequest.ProtoReflect.Descriptor instead.
 func (*StartRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{5}
+	return file_process_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StartRequest) GetProcess() *ProcessConfig {
@@ -417,7 +417,7 @@ type UpdateRequest struct {
 
 func (x *UpdateRequest) Reset() {
 	*x = UpdateRequest{}
-	mi := &file_process_process_proto_msgTypes[6]
+	mi := &file_process_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -429,7 +429,7 @@ func (x *UpdateRequest) String() string {
 func (*UpdateRequest) ProtoMessage() {}
 
 func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[6]
+	mi := &file_process_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -442,7 +442,7 @@ func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{6}
+	return file_process_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateRequest) GetProcess() *ProcessSelector {
@@ -467,7 +467,7 @@ type UpdateResponse struct {
 
 func (x *UpdateResponse) Reset() {
 	*x = UpdateResponse{}
-	mi := &file_process_process_proto_msgTypes[7]
+	mi := &file_process_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +479,7 @@ func (x *UpdateResponse) String() string {
 func (*UpdateResponse) ProtoMessage() {}
 
 func (x *UpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[7]
+	mi := &file_process_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +492,7 @@ func (x *UpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateResponse.ProtoReflect.Descriptor instead.
 func (*UpdateResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{7}
+	return file_process_proto_rawDescGZIP(), []int{7}
 }
 
 type ProcessEvent struct {
@@ -510,7 +510,7 @@ type ProcessEvent struct {
 
 func (x *ProcessEvent) Reset() {
 	*x = ProcessEvent{}
-	mi := &file_process_process_proto_msgTypes[8]
+	mi := &file_process_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -522,7 +522,7 @@ func (x *ProcessEvent) String() string {
 func (*ProcessEvent) ProtoMessage() {}
 
 func (x *ProcessEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[8]
+	mi := &file_process_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -535,7 +535,7 @@ func (x *ProcessEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessEvent.ProtoReflect.Descriptor instead.
 func (*ProcessEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{8}
+	return file_process_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ProcessEvent) GetEvent() isProcessEvent_Event {
@@ -618,7 +618,7 @@ type StartResponse struct {
 
 func (x *StartResponse) Reset() {
 	*x = StartResponse{}
-	mi := &file_process_process_proto_msgTypes[9]
+	mi := &file_process_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -630,7 +630,7 @@ func (x *StartResponse) String() string {
 func (*StartResponse) ProtoMessage() {}
 
 func (x *StartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[9]
+	mi := &file_process_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +643,7 @@ func (x *StartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartResponse.ProtoReflect.Descriptor instead.
 func (*StartResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{9}
+	return file_process_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *StartResponse) GetEvent() *ProcessEvent {
@@ -662,7 +662,7 @@ type ConnectResponse struct {
 
 func (x *ConnectResponse) Reset() {
 	*x = ConnectResponse{}
-	mi := &file_process_process_proto_msgTypes[10]
+	mi := &file_process_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -674,7 +674,7 @@ func (x *ConnectResponse) String() string {
 func (*ConnectResponse) ProtoMessage() {}
 
 func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[10]
+	mi := &file_process_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -687,7 +687,7 @@ func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectResponse.ProtoReflect.Descriptor instead.
 func (*ConnectResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{10}
+	return file_process_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ConnectResponse) GetEvent() *ProcessEvent {
@@ -707,7 +707,7 @@ type SendInputRequest struct {
 
 func (x *SendInputRequest) Reset() {
 	*x = SendInputRequest{}
-	mi := &file_process_process_proto_msgTypes[11]
+	mi := &file_process_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -719,7 +719,7 @@ func (x *SendInputRequest) String() string {
 func (*SendInputRequest) ProtoMessage() {}
 
 func (x *SendInputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[11]
+	mi := &file_process_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -732,7 +732,7 @@ func (x *SendInputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendInputRequest.ProtoReflect.Descriptor instead.
 func (*SendInputRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{11}
+	return file_process_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SendInputRequest) GetProcess() *ProcessSelector {
@@ -757,7 +757,7 @@ type SendInputResponse struct {
 
 func (x *SendInputResponse) Reset() {
 	*x = SendInputResponse{}
-	mi := &file_process_process_proto_msgTypes[12]
+	mi := &file_process_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -769,7 +769,7 @@ func (x *SendInputResponse) String() string {
 func (*SendInputResponse) ProtoMessage() {}
 
 func (x *SendInputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[12]
+	mi := &file_process_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,7 +782,7 @@ func (x *SendInputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendInputResponse.ProtoReflect.Descriptor instead.
 func (*SendInputResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{12}
+	return file_process_proto_rawDescGZIP(), []int{12}
 }
 
 type ProcessInput struct {
@@ -798,7 +798,7 @@ type ProcessInput struct {
 
 func (x *ProcessInput) Reset() {
 	*x = ProcessInput{}
-	mi := &file_process_process_proto_msgTypes[13]
+	mi := &file_process_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -810,7 +810,7 @@ func (x *ProcessInput) String() string {
 func (*ProcessInput) ProtoMessage() {}
 
 func (x *ProcessInput) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[13]
+	mi := &file_process_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -823,7 +823,7 @@ func (x *ProcessInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessInput.ProtoReflect.Descriptor instead.
 func (*ProcessInput) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{13}
+	return file_process_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ProcessInput) GetInput() isProcessInput_Input {
@@ -881,7 +881,7 @@ type StreamInputRequest struct {
 
 func (x *StreamInputRequest) Reset() {
 	*x = StreamInputRequest{}
-	mi := &file_process_process_proto_msgTypes[14]
+	mi := &file_process_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -893,7 +893,7 @@ func (x *StreamInputRequest) String() string {
 func (*StreamInputRequest) ProtoMessage() {}
 
 func (x *StreamInputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[14]
+	mi := &file_process_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -906,7 +906,7 @@ func (x *StreamInputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamInputRequest.ProtoReflect.Descriptor instead.
 func (*StreamInputRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{14}
+	return file_process_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *StreamInputRequest) GetEvent() isStreamInputRequest_Event {
@@ -973,7 +973,7 @@ type StreamInputResponse struct {
 
 func (x *StreamInputResponse) Reset() {
 	*x = StreamInputResponse{}
-	mi := &file_process_process_proto_msgTypes[15]
+	mi := &file_process_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -985,7 +985,7 @@ func (x *StreamInputResponse) String() string {
 func (*StreamInputResponse) ProtoMessage() {}
 
 func (x *StreamInputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[15]
+	mi := &file_process_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -998,7 +998,7 @@ func (x *StreamInputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamInputResponse.ProtoReflect.Descriptor instead.
 func (*StreamInputResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{15}
+	return file_process_proto_rawDescGZIP(), []int{15}
 }
 
 type SendSignalRequest struct {
@@ -1011,7 +1011,7 @@ type SendSignalRequest struct {
 
 func (x *SendSignalRequest) Reset() {
 	*x = SendSignalRequest{}
-	mi := &file_process_process_proto_msgTypes[16]
+	mi := &file_process_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1023,7 +1023,7 @@ func (x *SendSignalRequest) String() string {
 func (*SendSignalRequest) ProtoMessage() {}
 
 func (x *SendSignalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[16]
+	mi := &file_process_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1036,7 +1036,7 @@ func (x *SendSignalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendSignalRequest.ProtoReflect.Descriptor instead.
 func (*SendSignalRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{16}
+	return file_process_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SendSignalRequest) GetProcess() *ProcessSelector {
@@ -1061,7 +1061,7 @@ type SendSignalResponse struct {
 
 func (x *SendSignalResponse) Reset() {
 	*x = SendSignalResponse{}
-	mi := &file_process_process_proto_msgTypes[17]
+	mi := &file_process_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +1073,7 @@ func (x *SendSignalResponse) String() string {
 func (*SendSignalResponse) ProtoMessage() {}
 
 func (x *SendSignalResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[17]
+	mi := &file_process_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +1086,7 @@ func (x *SendSignalResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendSignalResponse.ProtoReflect.Descriptor instead.
 func (*SendSignalResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{17}
+	return file_process_proto_rawDescGZIP(), []int{17}
 }
 
 type CloseStdinRequest struct {
@@ -1098,7 +1098,7 @@ type CloseStdinRequest struct {
 
 func (x *CloseStdinRequest) Reset() {
 	*x = CloseStdinRequest{}
-	mi := &file_process_process_proto_msgTypes[18]
+	mi := &file_process_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1110,7 +1110,7 @@ func (x *CloseStdinRequest) String() string {
 func (*CloseStdinRequest) ProtoMessage() {}
 
 func (x *CloseStdinRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[18]
+	mi := &file_process_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1123,7 +1123,7 @@ func (x *CloseStdinRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseStdinRequest.ProtoReflect.Descriptor instead.
 func (*CloseStdinRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{18}
+	return file_process_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CloseStdinRequest) GetProcess() *ProcessSelector {
@@ -1141,7 +1141,7 @@ type CloseStdinResponse struct {
 
 func (x *CloseStdinResponse) Reset() {
 	*x = CloseStdinResponse{}
-	mi := &file_process_process_proto_msgTypes[19]
+	mi := &file_process_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1153,7 +1153,7 @@ func (x *CloseStdinResponse) String() string {
 func (*CloseStdinResponse) ProtoMessage() {}
 
 func (x *CloseStdinResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[19]
+	mi := &file_process_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1166,7 +1166,7 @@ func (x *CloseStdinResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseStdinResponse.ProtoReflect.Descriptor instead.
 func (*CloseStdinResponse) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{19}
+	return file_process_proto_rawDescGZIP(), []int{19}
 }
 
 type ConnectRequest struct {
@@ -1178,7 +1178,7 @@ type ConnectRequest struct {
 
 func (x *ConnectRequest) Reset() {
 	*x = ConnectRequest{}
-	mi := &file_process_process_proto_msgTypes[20]
+	mi := &file_process_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1190,7 +1190,7 @@ func (x *ConnectRequest) String() string {
 func (*ConnectRequest) ProtoMessage() {}
 
 func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[20]
+	mi := &file_process_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1203,7 +1203,7 @@ func (x *ConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectRequest.ProtoReflect.Descriptor instead.
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{20}
+	return file_process_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ConnectRequest) GetProcess() *ProcessSelector {
@@ -1226,7 +1226,7 @@ type ProcessSelector struct {
 
 func (x *ProcessSelector) Reset() {
 	*x = ProcessSelector{}
-	mi := &file_process_process_proto_msgTypes[21]
+	mi := &file_process_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1238,7 +1238,7 @@ func (x *ProcessSelector) String() string {
 func (*ProcessSelector) ProtoMessage() {}
 
 func (x *ProcessSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[21]
+	mi := &file_process_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1251,7 +1251,7 @@ func (x *ProcessSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessSelector.ProtoReflect.Descriptor instead.
 func (*ProcessSelector) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{21}
+	return file_process_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ProcessSelector) GetSelector() isProcessSelector_Selector {
@@ -1305,7 +1305,7 @@ type PTY_Size struct {
 
 func (x *PTY_Size) Reset() {
 	*x = PTY_Size{}
-	mi := &file_process_process_proto_msgTypes[22]
+	mi := &file_process_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1317,7 +1317,7 @@ func (x *PTY_Size) String() string {
 func (*PTY_Size) ProtoMessage() {}
 
 func (x *PTY_Size) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[22]
+	mi := &file_process_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1330,7 +1330,7 @@ func (x *PTY_Size) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PTY_Size.ProtoReflect.Descriptor instead.
 func (*PTY_Size) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{0, 0}
+	return file_process_proto_rawDescGZIP(), []int{0, 0}
 }
 
 func (x *PTY_Size) GetCols() uint32 {
@@ -1356,7 +1356,7 @@ type ProcessEvent_StartEvent struct {
 
 func (x *ProcessEvent_StartEvent) Reset() {
 	*x = ProcessEvent_StartEvent{}
-	mi := &file_process_process_proto_msgTypes[24]
+	mi := &file_process_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1368,7 +1368,7 @@ func (x *ProcessEvent_StartEvent) String() string {
 func (*ProcessEvent_StartEvent) ProtoMessage() {}
 
 func (x *ProcessEvent_StartEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[24]
+	mi := &file_process_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1381,7 +1381,7 @@ func (x *ProcessEvent_StartEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessEvent_StartEvent.ProtoReflect.Descriptor instead.
 func (*ProcessEvent_StartEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{8, 0}
+	return file_process_proto_rawDescGZIP(), []int{8, 0}
 }
 
 func (x *ProcessEvent_StartEvent) GetPid() uint32 {
@@ -1405,7 +1405,7 @@ type ProcessEvent_DataEvent struct {
 
 func (x *ProcessEvent_DataEvent) Reset() {
 	*x = ProcessEvent_DataEvent{}
-	mi := &file_process_process_proto_msgTypes[25]
+	mi := &file_process_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1417,7 +1417,7 @@ func (x *ProcessEvent_DataEvent) String() string {
 func (*ProcessEvent_DataEvent) ProtoMessage() {}
 
 func (x *ProcessEvent_DataEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[25]
+	mi := &file_process_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1430,7 +1430,7 @@ func (x *ProcessEvent_DataEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessEvent_DataEvent.ProtoReflect.Descriptor instead.
 func (*ProcessEvent_DataEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{8, 1}
+	return file_process_proto_rawDescGZIP(), []int{8, 1}
 }
 
 func (x *ProcessEvent_DataEvent) GetOutput() isProcessEvent_DataEvent_Output {
@@ -1501,7 +1501,7 @@ type ProcessEvent_EndEvent struct {
 
 func (x *ProcessEvent_EndEvent) Reset() {
 	*x = ProcessEvent_EndEvent{}
-	mi := &file_process_process_proto_msgTypes[26]
+	mi := &file_process_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1513,7 +1513,7 @@ func (x *ProcessEvent_EndEvent) String() string {
 func (*ProcessEvent_EndEvent) ProtoMessage() {}
 
 func (x *ProcessEvent_EndEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[26]
+	mi := &file_process_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1526,7 +1526,7 @@ func (x *ProcessEvent_EndEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessEvent_EndEvent.ProtoReflect.Descriptor instead.
 func (*ProcessEvent_EndEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{8, 2}
+	return file_process_proto_rawDescGZIP(), []int{8, 2}
 }
 
 func (x *ProcessEvent_EndEvent) GetExitCode() int32 {
@@ -1565,7 +1565,7 @@ type ProcessEvent_KeepAlive struct {
 
 func (x *ProcessEvent_KeepAlive) Reset() {
 	*x = ProcessEvent_KeepAlive{}
-	mi := &file_process_process_proto_msgTypes[27]
+	mi := &file_process_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1577,7 +1577,7 @@ func (x *ProcessEvent_KeepAlive) String() string {
 func (*ProcessEvent_KeepAlive) ProtoMessage() {}
 
 func (x *ProcessEvent_KeepAlive) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[27]
+	mi := &file_process_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1590,7 +1590,7 @@ func (x *ProcessEvent_KeepAlive) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessEvent_KeepAlive.ProtoReflect.Descriptor instead.
 func (*ProcessEvent_KeepAlive) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{8, 3}
+	return file_process_proto_rawDescGZIP(), []int{8, 3}
 }
 
 type StreamInputRequest_StartEvent struct {
@@ -1602,7 +1602,7 @@ type StreamInputRequest_StartEvent struct {
 
 func (x *StreamInputRequest_StartEvent) Reset() {
 	*x = StreamInputRequest_StartEvent{}
-	mi := &file_process_process_proto_msgTypes[28]
+	mi := &file_process_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1614,7 +1614,7 @@ func (x *StreamInputRequest_StartEvent) String() string {
 func (*StreamInputRequest_StartEvent) ProtoMessage() {}
 
 func (x *StreamInputRequest_StartEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[28]
+	mi := &file_process_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1627,7 +1627,7 @@ func (x *StreamInputRequest_StartEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamInputRequest_StartEvent.ProtoReflect.Descriptor instead.
 func (*StreamInputRequest_StartEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{14, 0}
+	return file_process_proto_rawDescGZIP(), []int{14, 0}
 }
 
 func (x *StreamInputRequest_StartEvent) GetProcess() *ProcessSelector {
@@ -1646,7 +1646,7 @@ type StreamInputRequest_DataEvent struct {
 
 func (x *StreamInputRequest_DataEvent) Reset() {
 	*x = StreamInputRequest_DataEvent{}
-	mi := &file_process_process_proto_msgTypes[29]
+	mi := &file_process_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1658,7 +1658,7 @@ func (x *StreamInputRequest_DataEvent) String() string {
 func (*StreamInputRequest_DataEvent) ProtoMessage() {}
 
 func (x *StreamInputRequest_DataEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[29]
+	mi := &file_process_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1671,7 +1671,7 @@ func (x *StreamInputRequest_DataEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamInputRequest_DataEvent.ProtoReflect.Descriptor instead.
 func (*StreamInputRequest_DataEvent) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{14, 1}
+	return file_process_proto_rawDescGZIP(), []int{14, 1}
 }
 
 func (x *StreamInputRequest_DataEvent) GetInput() *ProcessInput {
@@ -1689,7 +1689,7 @@ type StreamInputRequest_KeepAlive struct {
 
 func (x *StreamInputRequest_KeepAlive) Reset() {
 	*x = StreamInputRequest_KeepAlive{}
-	mi := &file_process_process_proto_msgTypes[30]
+	mi := &file_process_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1701,7 +1701,7 @@ func (x *StreamInputRequest_KeepAlive) String() string {
 func (*StreamInputRequest_KeepAlive) ProtoMessage() {}
 
 func (x *StreamInputRequest_KeepAlive) ProtoReflect() protoreflect.Message {
-	mi := &file_process_process_proto_msgTypes[30]
+	mi := &file_process_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1714,14 +1714,14 @@ func (x *StreamInputRequest_KeepAlive) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamInputRequest_KeepAlive.ProtoReflect.Descriptor instead.
 func (*StreamInputRequest_KeepAlive) Descriptor() ([]byte, []int) {
-	return file_process_process_proto_rawDescGZIP(), []int{14, 2}
+	return file_process_proto_rawDescGZIP(), []int{14, 2}
 }
 
-var File_process_process_proto protoreflect.FileDescriptor
+var File_process_proto protoreflect.FileDescriptor
 
-const file_process_process_proto_rawDesc = "" +
+const file_process_proto_rawDesc = "" +
 	"\n" +
-	"\x15process/process.proto\x12\aprocess\"\\\n" +
+	"\rprocess.proto\x12\aprocess\"\\\n" +
 	"\x03PTY\x12%\n" +
 	"\x04size\x18\x01 \x01(\v2\x11.process.PTY.SizeR\x04size\x1a.\n" +
 	"\x04Size\x12\x12\n" +
@@ -1832,23 +1832,23 @@ const file_process_process_proto_rawDesc = "" +
 	"\n" +
 	"SendSignal\x12\x1a.process.SendSignalRequest\x1a\x1b.process.SendSignalResponse\x12E\n" +
 	"\n" +
-	"CloseStdin\x12\x1a.process.CloseStdinRequest\x1a\x1b.process.CloseStdinResponseBLZJgithub.com/huaweicloud/devspace-devbox/cli/internal/api/processgen/processb\x06proto3"
+	"CloseStdin\x12\x1a.process.CloseStdinRequest\x1a\x1b.process.CloseStdinResponseBLZJgithub.com/huaweicloud/devspace-devbox/cli/internal/api/processgen;processb\x06proto3"
 
 var (
-	file_process_process_proto_rawDescOnce sync.Once
-	file_process_process_proto_rawDescData []byte
+	file_process_proto_rawDescOnce sync.Once
+	file_process_proto_rawDescData []byte
 )
 
-func file_process_process_proto_rawDescGZIP() []byte {
-	file_process_process_proto_rawDescOnce.Do(func() {
-		file_process_process_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_process_process_proto_rawDesc), len(file_process_process_proto_rawDesc)))
+func file_process_proto_rawDescGZIP() []byte {
+	file_process_proto_rawDescOnce.Do(func() {
+		file_process_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_process_proto_rawDesc), len(file_process_proto_rawDesc)))
 	})
-	return file_process_process_proto_rawDescData
+	return file_process_proto_rawDescData
 }
 
-var file_process_process_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_process_process_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
-var file_process_process_proto_goTypes = []any{
+var file_process_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_process_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_process_proto_goTypes = []any{
 	(Signal)(0),                           // 0: process.Signal
 	(*PTY)(nil),                           // 1: process.PTY
 	(*ProcessConfig)(nil),                 // 2: process.ProcessConfig
@@ -1882,7 +1882,7 @@ var file_process_process_proto_goTypes = []any{
 	(*StreamInputRequest_DataEvent)(nil),  // 30: process.StreamInputRequest.DataEvent
 	(*StreamInputRequest_KeepAlive)(nil),  // 31: process.StreamInputRequest.KeepAlive
 }
-var file_process_process_proto_depIdxs = []int32{
+var file_process_proto_depIdxs = []int32{
 	23, // 0: process.PTY.size:type_name -> process.PTY.Size
 	24, // 1: process.ProcessConfig.envs:type_name -> process.ProcessConfig.EnvsEntry
 	2,  // 2: process.ProcessInfo.config:type_name -> process.ProcessConfig
@@ -1931,56 +1931,56 @@ var file_process_process_proto_depIdxs = []int32{
 	0,  // [0:25] is the sub-list for field type_name
 }
 
-func init() { file_process_process_proto_init() }
-func file_process_process_proto_init() {
-	if File_process_process_proto != nil {
+func init() { file_process_proto_init() }
+func file_process_proto_init() {
+	if File_process_proto != nil {
 		return
 	}
-	file_process_process_proto_msgTypes[1].OneofWrappers = []any{}
-	file_process_process_proto_msgTypes[3].OneofWrappers = []any{}
-	file_process_process_proto_msgTypes[5].OneofWrappers = []any{}
-	file_process_process_proto_msgTypes[6].OneofWrappers = []any{}
-	file_process_process_proto_msgTypes[8].OneofWrappers = []any{
+	file_process_proto_msgTypes[1].OneofWrappers = []any{}
+	file_process_proto_msgTypes[3].OneofWrappers = []any{}
+	file_process_proto_msgTypes[5].OneofWrappers = []any{}
+	file_process_proto_msgTypes[6].OneofWrappers = []any{}
+	file_process_proto_msgTypes[8].OneofWrappers = []any{
 		(*ProcessEvent_Start)(nil),
 		(*ProcessEvent_Data)(nil),
 		(*ProcessEvent_End)(nil),
 		(*ProcessEvent_Keepalive)(nil),
 	}
-	file_process_process_proto_msgTypes[13].OneofWrappers = []any{
+	file_process_proto_msgTypes[13].OneofWrappers = []any{
 		(*ProcessInput_Stdin)(nil),
 		(*ProcessInput_Pty)(nil),
 	}
-	file_process_process_proto_msgTypes[14].OneofWrappers = []any{
+	file_process_proto_msgTypes[14].OneofWrappers = []any{
 		(*StreamInputRequest_Start)(nil),
 		(*StreamInputRequest_Data)(nil),
 		(*StreamInputRequest_Keepalive)(nil),
 	}
-	file_process_process_proto_msgTypes[21].OneofWrappers = []any{
+	file_process_proto_msgTypes[21].OneofWrappers = []any{
 		(*ProcessSelector_Pid)(nil),
 		(*ProcessSelector_Tag)(nil),
 	}
-	file_process_process_proto_msgTypes[25].OneofWrappers = []any{
+	file_process_proto_msgTypes[25].OneofWrappers = []any{
 		(*ProcessEvent_DataEvent_Stdout)(nil),
 		(*ProcessEvent_DataEvent_Stderr)(nil),
 		(*ProcessEvent_DataEvent_Pty)(nil),
 	}
-	file_process_process_proto_msgTypes[26].OneofWrappers = []any{}
+	file_process_proto_msgTypes[26].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_process_process_proto_rawDesc), len(file_process_process_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_process_proto_rawDesc), len(file_process_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_process_process_proto_goTypes,
-		DependencyIndexes: file_process_process_proto_depIdxs,
-		EnumInfos:         file_process_process_proto_enumTypes,
-		MessageInfos:      file_process_process_proto_msgTypes,
+		GoTypes:           file_process_proto_goTypes,
+		DependencyIndexes: file_process_proto_depIdxs,
+		EnumInfos:         file_process_proto_enumTypes,
+		MessageInfos:      file_process_proto_msgTypes,
 	}.Build()
-	File_process_process_proto = out.File
-	file_process_process_proto_goTypes = nil
-	file_process_process_proto_depIdxs = nil
+	File_process_proto = out.File
+	file_process_proto_goTypes = nil
+	file_process_proto_depIdxs = nil
 }

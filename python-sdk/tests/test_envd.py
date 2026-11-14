@@ -24,6 +24,10 @@ def test_envd_reads_metrics_envs_and_health() -> None:
                 json={
                     "ts": 1763000000,
                     "cpu_count": 2,
+                    "cpu_possible": 16,
+                    "cpu_target": 8,
+                    "cpu_target_attempts": 3,
+                    "cpu_write_pending_ms": 1500,
                     "cpu_used_pct": 8.25,
                     "mem_total": 1024,
                     "mem_used": 512,
@@ -45,6 +49,10 @@ def test_envd_reads_metrics_envs_and_health() -> None:
         health = envd.health()
 
     assert metrics.cpu_count == 2
+    assert metrics.cpu_possible == 16
+    assert metrics.cpu_target == 8
+    assert metrics.cpu_target_attempts == 3
+    assert metrics.cpu_write_pending_ms == 1500
     assert metrics.cpu_used_pct == 8.25
     assert metrics.disk_used == 1024
     assert metrics.oom_kills == (OomKill(seq=3, process="python3"),)
@@ -74,6 +82,10 @@ async def test_async_envd_reads_metrics_envs_and_health() -> None:
         envd = AsyncEnvd(provide)
         metrics = await envd.get_metrics()
         assert metrics.cpu_count == 2
+        assert metrics.cpu_possible == 16
+        assert metrics.cpu_target == 8
+        assert metrics.cpu_target_attempts == 3
+        assert metrics.cpu_write_pending_ms == 1500
         assert metrics.cpu_used_pct == 8.25
         assert metrics.oom_kills == (OomKill(seq=3, process="python3"),)
         assert (await envd.get_envs())["DEVBOX_ID"] == "sbx-1"
@@ -86,6 +98,10 @@ def _metrics_payload() -> Mapping[str, Any]:
     return {
         "ts": 1763000000,
         "cpu_count": 2,
+        "cpu_possible": 16,
+        "cpu_target": 8,
+        "cpu_target_attempts": 3,
+        "cpu_write_pending_ms": 1500,
         "cpu_used_pct": 8.25,
         "mem_total": 1024,
         "mem_used": 512,
@@ -107,6 +123,28 @@ def test_envd_metrics_without_oom_kills() -> None:
         metrics = Envd(lambda: transport).get_metrics()
 
     assert metrics.oom_kills is None
+
+
+def test_envd_metrics_without_cpu_hotplug_fields() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/metrics"
+        payload = dict(_metrics_payload())
+        for key in (
+            "cpu_possible",
+            "cpu_target",
+            "cpu_target_attempts",
+            "cpu_write_pending_ms",
+        ):
+            del payload[key]
+        return httpx.Response(200, json=payload)
+
+    with _transport(handler) as transport:
+        metrics = Envd(lambda: transport).get_metrics()
+
+    assert metrics.cpu_possible is None
+    assert metrics.cpu_target is None
+    assert metrics.cpu_target_attempts is None
+    assert metrics.cpu_write_pending_ms is None
 
 
 def _transport(handler: Any) -> SyncTransport:

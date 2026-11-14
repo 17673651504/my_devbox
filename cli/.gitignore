@@ -9,6 +9,12 @@ dist-extra/
 .idea/
 .vscode/
 
+# AI
+.claude/
+.cursor/
+.aider*
+.windsurf/
+
 # Env
 .env
 *.log

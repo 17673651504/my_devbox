@@ -43,6 +43,39 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+// usageTemplate 基于 cobra v1.10.2 的 defaultUsageTemplate（command.go），仅移除
+// Aliases 段：Use 里的管道写法（如 sandbox|sbx、create|cr）已经向用户展示了
+// 缩写，而 Aliases 行的第一项是 Name() 派生的 "sandbox|sbx"，会与后面的别名
+// 重复。SetUsageTemplate 在根命令上设置后由全部子命令继承。
+// 注意：升级 cobra 版本时，需对照其 defaultUsageTemplate 同步本模板。
+const usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+
+Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
 func init() {
 	client.UserAgent = "devbox-cli/" + Version
 	// Global verbose switch (-v): enables debug logs (including API requests/responses).
@@ -51,6 +84,9 @@ func init() {
 
 	// --version outputs only the version string itself (the default template adds a "devbox.exe version " prefix).
 	RootCmd.SetVersionTemplate("{{.Version}}\n")
+
+	// 隐藏 Aliases 段，避免 "sandbox|sbx, sandbox, sbx" 这类重复展示（见 usageTemplate 注释）。
+	RootCmd.SetUsageTemplate(usageTemplate)
 
 	RootCmd.AddCommand(authCmd, sandboxCmd, templateCmd)
 }
