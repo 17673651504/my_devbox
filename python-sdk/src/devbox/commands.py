@@ -1,13 +1,21 @@
+"""Process operations inside a sandbox: run commands, reconnect to running
+processes, and deliver input and signals by process ID.
+
+Exposed as :attr:`Sandbox.commands` / :attr:`AsyncSandbox.commands`; see
+:mod:`devbox.pty` for interactive terminal sessions.
+"""
+
 from __future__ import annotations
 
 import base64
 import codecs
 import inspect
+import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator, Mapping
 from typing import Any, Literal, overload
 
 from ._transport import AsyncTransport, SyncTransport
-from .errors import CommandExitError, ConfigurationError, ProtocolError
+from .errors import CommandExitError, ConfigurationError, ProtocolError, RequestTimeoutError
 from .models import CommandResult, OutputChunk, ProcessInfo, PtySize
 
 OutputHandler = Callable[[str], None]
@@ -16,6 +24,10 @@ SyncTransportProvider = Callable[[], SyncTransport]
 AsyncTransportProvider = Callable[[], Awaitable[AsyncTransport]]
 
 _PROCESS = "/process.Process"
+
+
+class _MissingExitStatus(ProtocolError):
+    pass
 
 
 class CommandHandle:
@@ -142,13 +154,24 @@ class Commands:
         on_stderr: OutputHandler | None = None,
         check: bool = True,
     ) -> CommandResult | CommandHandle:
-        """Run a shell command or return a handle for a background command."""
+        """Run a shell command or return a handle for a background command.
+
+        Foreground runs collect stdout/stderr and raise
+        :class:`CommandExitError` on a nonzero exit when ``check`` is true;
+        ``background=True`` returns a :class:`CommandHandle` immediately.
+        """
         if background and (on_stdout is not None or on_stderr is not None):
             raise ValueError("background output callbacks belong on handle.wait()")
+        started = time.monotonic()
         handle = self._start(_command_body(command, envs, cwd, stdin), timeout=timeout, user=user)
         if background:
             return handle
-        return handle.wait(on_stdout=on_stdout, on_stderr=on_stderr, check=check)
+        try:
+            return handle.wait(on_stdout=on_stdout, on_stderr=on_stderr, check=check)
+        except _MissingExitStatus as error:
+            if timeout and time.monotonic() - started >= timeout:
+                raise RequestTimeoutError("command timed out") from error
+            raise
 
     def connect(self, pid: int, *, timeout: float | None = 60) -> CommandHandle:
         """Reconnect to a running process by process ID."""
@@ -195,7 +218,8 @@ class Commands:
         request = dict(body)
         if pty:
             request["pty"] = {"size": {"rows": pty.rows, "cols": pty.cols}}
-        events = self._transport().connect_stream(
+        transport = self._transport()
+        events = transport.connect_stream(
             f"{_PROCESS}/Start",
             request,
             timeout=timeout,
@@ -256,7 +280,11 @@ class Commands:
 
 
 class AsyncCommandHandle:
-    """Asynchronous counterpart of :class:`CommandHandle`."""
+    """Asynchronous counterpart of :class:`CommandHandle`.
+
+    Consumes the process event stream until exit; ``wait`` collects the
+    output and returns the final :class:`CommandResult`.
+    """
 
     def __init__(
         self,
@@ -281,6 +309,7 @@ class AsyncCommandHandle:
         on_stderr: AsyncOutputHandler | None = None,
         check: bool = True,
     ) -> CommandResult:
+        """Wait for exit and collect output; raises on nonzero exit when ``check`` is true."""
         if self._result is None:
             events = self._events or await self._commands._connect_events(
                 self.pid, self._reconnect_timeout
@@ -297,21 +326,26 @@ class AsyncCommandHandle:
         return self._result
 
     async def send_stdin(self, data: str | bytes) -> None:
+        """Write data to this process's stdin or terminal."""
         self._ensure_active()
         await self._commands._send_input(self.pid, data, self._input_stream)
 
     async def close_stdin(self) -> None:
+        """Send EOF to this (non-PTY) process so it can finish consuming input."""
         self._ensure_active()
         await self._commands.close_stdin(self.pid)
 
     async def send_signal(self, signal: Literal["SIGTERM", "SIGKILL"]) -> None:
+        """Deliver a signal to this process; only SIGTERM and SIGKILL are supported."""
         self._ensure_active()
         await self._commands.send_signal(self.pid, signal)
 
     async def kill(self) -> None:
+        """Force-kill this process (SIGKILL)."""
         await self.send_signal("SIGKILL")
 
     async def disconnect(self) -> None:
+        """Close the local output stream without stopping the remote process."""
         if self._events is not None:
             await self._events.aclose()
         self._events = None
@@ -373,17 +407,29 @@ class AsyncCommands:
         on_stderr: AsyncOutputHandler | None = None,
         check: bool = True,
     ) -> CommandResult | AsyncCommandHandle:
-        """Run a shell command or return a handle for a background command."""
+        """Run a shell command or return a handle for a background command.
+
+        Foreground runs collect stdout/stderr and raise
+        :class:`CommandExitError` on a nonzero exit when ``check`` is true;
+        ``background=True`` returns an :class:`AsyncCommandHandle` immediately.
+        """
         if background and (on_stdout is not None or on_stderr is not None):
             raise ValueError("background output callbacks belong on handle.wait()")
+        started = time.monotonic()
         handle = await self._start(
             _command_body(command, envs, cwd, stdin), timeout=timeout, user=user
         )
         if background:
             return handle
-        return await handle.wait(on_stdout=on_stdout, on_stderr=on_stderr, check=check)
+        try:
+            return await handle.wait(on_stdout=on_stdout, on_stderr=on_stderr, check=check)
+        except _MissingExitStatus as error:
+            if timeout and time.monotonic() - started >= timeout:
+                raise RequestTimeoutError("command timed out") from error
+            raise
 
     async def connect(self, pid: int, *, timeout: float | None = 60) -> AsyncCommandHandle:
+        """Reconnect to a running process by process ID."""
         _validate_pid(pid)
         return AsyncCommandHandle(
             pid,
@@ -393,19 +439,23 @@ class AsyncCommands:
         )
 
     async def list(self) -> tuple[ProcessInfo, ...]:
+        """List processes managed by EnvD in this sandbox."""
         transport = await self._transport()
         payload = await transport.connect_unary(f"{_PROCESS}/List", {})
         return tuple(ProcessInfo.from_wire(item) for item in _items(payload, "processes"))
 
     async def send_stdin(self, pid: int, data: str | bytes) -> None:
+        """Send standard input to a process by process ID."""
         await self._send_input(pid, data, "stdin")
 
     async def close_stdin(self, pid: int) -> None:
+        """Close standard input for a process by process ID."""
         _validate_pid(pid)
         transport = await self._transport()
         await transport.connect_unary(f"{_PROCESS}/CloseStdin", {"process": {"pid": pid}})
 
     async def send_signal(self, pid: int, signal: Literal["SIGTERM", "SIGKILL"]) -> None:
+        """Send a POSIX signal to a process by process ID."""
         _validate_pid(pid)
         transport = await self._transport()
         await transport.connect_unary(
@@ -531,7 +581,7 @@ class _OutputCollector:
     def result(self) -> CommandResult:
         self._flush()
         if self._exit_code is None:
-            raise ProtocolError("command stream ended without an exit status")
+            raise _MissingExitStatus("command stream ended without an exit status")
         return CommandResult(
             exit_code=self._exit_code,
             stdout="".join(self._stdout),

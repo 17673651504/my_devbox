@@ -4,6 +4,10 @@ import { type EnvdHealth, type EnvdMetrics, parseEnvdMetrics } from "./models.js
 
 type TransportProvider = () => Promise<Transport>;
 
+/**
+ * Data-plane access to the sandbox-local envd service: metrics, environment
+ * variables and health. Accessed via {@link Sandbox.envd}.
+ */
 export class Envd {
   readonly #transport: TransportProvider;
 
@@ -11,12 +15,14 @@ export class Envd {
     this.#transport = transport;
   }
 
+  /** Returns current CPU, memory and disk usage metrics of the sandbox. */
   async getMetrics(): Promise<EnvdMetrics> {
     return parseEnvdMetrics(
       objectValue(await (await this.#transport()).request("GET", "/metrics")),
     );
   }
 
+  /** Returns the environment variables visible to envd. */
   async getEnvs(): Promise<Record<string, string>> {
     return stringRecord(
       objectValue(
@@ -26,6 +32,7 @@ export class Envd {
     );
   }
 
+  /** Returns the envd health info, including the guest envd version. */
   async health(): Promise<EnvdHealth> {
     const { headers } = await (await this.#transport()).requestWithHeaders("GET", "/health");
     return { envdVersion: headers.get("x-envd-version") ?? "" };

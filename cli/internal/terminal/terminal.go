@@ -67,7 +67,7 @@ func (s *Session) Run(ctx context.Context) (*process.ProcessEvent_EndEvent, erro
 		s.sawOutput.Store(false)
 		end, err := s.runOnce(ctx, cols, rows)
 		if err != nil && !s.sawOutput.Load() && attempt < maxStartAttempts {
-			// Transport errors before any output (e.g. a transient gateway
+			// Transport errors before any output (eg. a transient gateway
 			// "Bad gateway" while the sandbox is still waking up) are
 			// retryable.
 			time.Sleep(time.Second)

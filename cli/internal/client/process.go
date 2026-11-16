@@ -75,7 +75,7 @@ type ProcessClient struct {
 }
 
 // NewProcessClient builds a client against the sandbox domain. The domain
-// embeds the envd port (e.g. https://<tunnel>-49983.host); when it cannot be
+// embeds the envd port (eg. https://<tunnel>-49983.host); when it cannot be
 // parsed the default 49983 is used. A non-empty user is sent via HTTP Basic
 // auth on every request so envd starts processes as that sandbox user. All
 // traffic is logged at debug level (see envdLoggingTransport) so `-v` runs
@@ -156,8 +156,22 @@ func (p *ProcessClient) StartPTY(ctx context.Context, cfg *process.ProcessConfig
 	return p.rpc.Start(ctx, req)
 }
 
+// quietKey marks requests whose traffic must stay out of the debug log.
+type quietKey struct{}
+
+// quietContext marks ctx so the envd debug transport skips logging the
+// request and its response. Interactive PTY sessions deliver one SendInput
+// per keystroke (and a stream of resize events while a window is dragged);
+// logging each would flood the raw-mode terminal display and make the
+// session unusable under -v.
+func quietContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, quietKey{}, true)
+}
+
 // SendPtyInput writes bytes to the PTY of a running process.
 func (p *ProcessClient) SendPtyInput(ctx context.Context, pid uint32, data []byte) error {
+	// One request per keystroke: never log interactive session traffic.
+	ctx = quietContext(ctx)
 	_, err := p.rpc.SendInput(ctx, connect.NewRequest(&process.SendInputRequest{
 		Process: &process.ProcessSelector{
 			Selector: &process.ProcessSelector_Pid{Pid: pid},
@@ -171,6 +185,8 @@ func (p *ProcessClient) SendPtyInput(ctx context.Context, pid uint32, data []byt
 
 // UpdateSize resizes the PTY of a running process.
 func (p *ProcessClient) UpdateSize(ctx context.Context, pid uint32, cols, rows int) error {
+	// Window drags emit a stream of resize events: keep them out of the log.
+	ctx = quietContext(ctx)
 	_, err := p.rpc.Update(ctx, connect.NewRequest(&process.UpdateRequest{
 		Process: &process.ProcessSelector{
 			Selector: &process.ProcessSelector_Pid{Pid: pid},
@@ -214,7 +230,7 @@ func (p *ProcessClient) SendSignal(ctx context.Context, pid uint32, sig process.
 	return err
 }
 
-// IsNotFound reports whether err is an envd not_found RPC error, e.g. when
+// IsNotFound reports whether err is an envd not_found RPC error, eg. when
 // connecting to a process that already exited.
 func IsNotFound(err error) bool {
 	return connect.CodeOf(err) == connect.CodeNotFound

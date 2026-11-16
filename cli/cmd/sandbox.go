@@ -38,10 +38,10 @@ var (
 	sandboxCreateUser               string
 )
 
-// sandboxCreateCmd implements `devbox sandbox create <templateID>`, corresponding to POST /sandboxes.
+// sandboxCreateCmd implements `devbox sandbox create <templateID|alias>`, corresponding to POST /sandboxes.
 // Aligned with e2b: by default the terminal opens right after creation; --detach only creates.
 var sandboxCreateCmd = &cobra.Command{
-	Use:     "create|cr <templateID>",
+	Use:     "create|cr <templateID|alias>",
 	Aliases: []string{"create", "cr"},
 	Short:   i18n.T(i18n.Msg.Sandbox.CreateShort),
 	Args:    cobra.ExactArgs(1),
@@ -626,10 +626,10 @@ func init() {
 	sandboxKillCmd.Flags().StringVarP(&sandboxKillMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagKillMetadata))
 
-	sandboxResumeCmd.Flags().Int32VarP(&sandboxResumeTimeout, "timeout", "t", 300,
+	sandboxResumeCmd.Flags().Int32VarP(&sandboxResumeTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 
-	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 300,
+	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))

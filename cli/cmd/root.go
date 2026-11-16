@@ -1,6 +1,6 @@
 // Package cmd defines the cobra command tree for the devbox CLI.
 //
-// Each command is a package-level var (e.g. loginCmd), registered to its parent via AddCommand in each file's init().
+// Each command is a package-level var (eg. loginCmd), registered to its parent via AddCommand in each file's init().
 // Business errors are uniformly wrapped by runError and printed; main only handles the ExitCode.
 package cmd
 

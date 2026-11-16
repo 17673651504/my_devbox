@@ -7,8 +7,8 @@ func TestKey(t *testing.T) {
 		{"", ""},
 		{"short", "*****"},
 		{"12345678", "********"},
-		{"123456789", "1234*6789"},
-		{"sk-abcdefghijklmnop", "sk-a***********mnop"},
+		{"123456789", "1234****6789"},
+		{"sk-abcdefghijklmnop", "sk-a****mnop"},
 	}
 	for _, c := range cases {
 		if got := Key(c.in); got != c.want {

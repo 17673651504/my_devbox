@@ -1,3 +1,10 @@
+"""Sandbox lifecycle operations and the per-sandbox handles.
+
+:class:`Sandbox` / :class:`AsyncSandbox` are the main entry points; they
+carry the connection credentials and the ``commands`` / ``files`` / ``pty``
+/ ``git`` / ``envd`` data-plane namespaces.
+"""
+
 from __future__ import annotations
 
 import re
@@ -56,6 +63,10 @@ class Sandboxes:
         lifecycle: SandboxLifecycle | None = None,
         network: Mapping[str, bool] | None = None,
     ) -> Sandbox:
+        """Create a sandbox from a template and return its handle.
+
+        The handle carries a live envd connection with fresh credentials.
+        """
         payload = self._transport.request(
             "POST",
             "/sandboxes",
@@ -95,6 +106,7 @@ class Sandboxes:
         )
 
     def get(self, sandbox_id: str) -> SandboxInfo:
+        """Return full details for a sandbox."""
         return SandboxInfo.from_wire(
             _mapping(self._transport.request("GET", f"/sandboxes/{_id(sandbox_id)}"))
         )
@@ -110,6 +122,7 @@ class Sandboxes:
         started_after: str | None = None,
         order: Literal["asc", "desc"] | None = None,
     ) -> Page[SandboxInfo]:
+        """Return a filtered, paginated list of sandboxes."""
         payload, headers = self._transport.request_with_headers(
             "GET",
             "/sandboxes",
@@ -145,6 +158,10 @@ class AsyncSandboxes:
         lifecycle: SandboxLifecycle | None = None,
         network: Mapping[str, bool] | None = None,
     ) -> AsyncSandbox:
+        """Create a sandbox from a template and return its handle.
+
+        The handle carries a live envd connection with fresh credentials.
+        """
         payload = await self._transport.request(
             "POST",
             "/sandboxes",
@@ -168,6 +185,7 @@ class AsyncSandboxes:
         )
 
     async def connect(self, sandbox_id: str, *, timeout: int = 300) -> AsyncSandbox:
+        """Fetch Gateway credentials, resuming a paused sandbox when needed."""
         payload = await self._transport.request(
             "POST",
             f"/sandboxes/{_id(sandbox_id)}/connect",
@@ -183,6 +201,7 @@ class AsyncSandboxes:
         )
 
     async def get(self, sandbox_id: str) -> SandboxInfo:
+        """Return full details for a sandbox."""
         return SandboxInfo.from_wire(
             _mapping(await self._transport.request("GET", f"/sandboxes/{_id(sandbox_id)}"))
         )
@@ -198,6 +217,7 @@ class AsyncSandboxes:
         started_after: str | None = None,
         order: Literal["asc", "desc"] | None = None,
     ) -> Page[SandboxInfo]:
+        """Return a filtered, paginated list of sandboxes."""
         payload, headers = await self._transport.request_with_headers(
             "GET",
             "/sandboxes",
@@ -327,11 +347,17 @@ class Sandbox:
 
     @property
     def sandbox_id(self) -> str:
+        """The sandbox ID of this handle."""
         return self._info.sandbox_id
 
     @property
     def info(self) -> SandboxInfo:
+        """Cached sandbox info (refreshed by :meth:`get_info`)."""
         return self._info
+
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
 
     def get_info(self) -> SandboxInfo:
         """Fetch the latest sandbox state from the Manager."""
@@ -598,13 +624,20 @@ class AsyncSandbox:
 
     @property
     def sandbox_id(self) -> str:
+        """The sandbox ID of this handle."""
         return self._info.sandbox_id
 
     @property
     def info(self) -> SandboxInfo:
+        """Cached sandbox info (refreshed by :meth:`get_info`)."""
         return self._info
 
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
+
     async def get_info(self) -> SandboxInfo:
+        """Fetch the latest sandbox state from the Manager."""
         self._info = SandboxInfo.from_wire(
             _mapping(await self._control.request("GET", f"/sandboxes/{_id(self.sandbox_id)}"))
         )
@@ -619,6 +652,7 @@ class AsyncSandbox:
             return False
 
     async def set_timeout(self, timeout: int) -> None:
+        """Set the sandbox time-to-live in seconds from now."""
         await self._control.request(
             "POST",
             f"/sandboxes/{_id(self.sandbox_id)}/timeout",
@@ -909,8 +943,8 @@ def _mapping(value: object) -> Mapping[str, Any]:
 
 
 def _checked_timeout(timeout: int) -> int:
-    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 86400:
-        raise ValueError("timeout must be an integer between 1 and 86400 seconds")
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 10 <= timeout <= 86400:
+        raise ValueError("timeout must be an integer between 10 and 86400 seconds")
     return timeout
 
 

@@ -14,26 +14,33 @@ import {
   type WireObject,
 } from "./internal/wire.js";
 
+/** Lifecycle states of a sandbox as reported by the Manager API. */
 export const SandboxState = {
   Running: "running",
   Paused: "paused",
   Stopped: "stopped",
 } as const;
+/** One of the {@link SandboxState} values. */
 export type SandboxState = (typeof SandboxState)[keyof typeof SandboxState];
 
+/** Entry types returned by the sandbox filesystem. */
 export const FileType = { File: "file", Directory: "directory", Symlink: "symlink" } as const;
+/** One of the {@link FileType} values. */
 export type FileType = (typeof FileType)[keyof typeof FileType];
 
+/** Deadline behavior requested at sandbox creation. */
 export interface SandboxLifecycle {
   onTimeout?: "kill" | "pause";
   autoResume?: boolean;
 }
 
+/** Deadline behavior as reported by the Manager API (all fields resolved). */
 export interface SandboxInfoLifecycle {
   onTimeout: "kill" | "pause";
   autoResume: boolean;
 }
 
+/** A sandbox template: an image with its default resource footprint. */
 export interface TemplateInfo {
   templateId: string;
   name: string;
@@ -45,6 +52,7 @@ export interface TemplateInfo {
   names?: string[];
 }
 
+/** Sandbox details as reported by the Manager API. */
 export interface SandboxInfo {
   sandboxId: string;
   templateId: string;
@@ -58,6 +66,7 @@ export interface SandboxInfo {
   lifecycle?: SandboxInfoLifecycle;
 }
 
+/** Connection credentials for the sandbox-local envd service. */
 export interface SandboxConnection {
   sandboxId: string;
   domain: string;
@@ -67,19 +76,20 @@ export interface SandboxConnection {
   envdAccessToken?: string;
 }
 
+/** A process running (or previously run) in the sandbox. */
 export interface ProcessInfo {
   pid: number;
   command: string;
   running: boolean;
   startedAt?: Date;
-}
-
+} /** One decoded chunk of command output. */
 export interface OutputChunk {
   stream: "stdout" | "stderr";
   data: string;
   timestamp?: Date;
 }
 
+/** Final result of a completed command. */
 export interface CommandResult {
   exitCode: number;
   stdout: string;
@@ -87,20 +97,24 @@ export interface CommandResult {
   pid?: number;
 }
 
+/** Terminal dimensions for PTY sessions. */
 export interface PtySize {
   rows: number;
   cols: number;
 }
 
+/** Health info of the sandbox-local envd service. */
 export interface EnvdHealth {
   envdVersion: string;
 }
 
+/** One guest-kernel OOM kill event. */
 export interface OomKill {
   seq: number;
   process: string;
 }
 
+/** CPU, memory and disk usage of the sandbox, as reported by envd. */
 export interface EnvdMetrics {
   timestamp: Date;
   cpuCount: number;
@@ -114,10 +128,10 @@ export interface EnvdMetrics {
   memCache: number;
   diskTotal: number;
   diskUsed: number;
-  /** Latest guest-kernel OOM kills; undefined while envd has not yet observed the kernel log. */
   oomKills?: OomKill[];
 }
 
+/** Metadata of a file or directory in the sandbox. */
 export interface FileInfo {
   name: string;
   path: string;
@@ -131,6 +145,7 @@ export interface FileInfo {
   symlinkTarget?: string;
 }
 
+/** One change event from {@link Filesystem.watch}. */
 export interface FileWatchEvent {
   name: string;
   type: string;
@@ -138,12 +153,18 @@ export interface FileWatchEvent {
   entry?: FileInfo;
 }
 
+/** A paginated list result with the server-provided continuation token. */
 export interface Page<T> {
   items: T[];
   nextToken?: string;
   total?: number;
 }
 
+/**
+ * Parses a Manager API sandbox payload into {@link SandboxInfo}; accepts the
+ * documented field names and common snake_case variants. Throws
+ * {@link ProtocolError} on an unknown state or lifecycle value.
+ */
 export function parseSandboxInfo(value: WireObject): SandboxInfo {
   const state = stringValue(pickOr(value, "running", "state", "status"));
   if (!Object.values(SandboxState).includes(state as SandboxState)) {
@@ -177,6 +198,7 @@ export function parseSandboxInfo(value: WireObject): SandboxInfo {
   };
 }
 
+/** Parses a Manager API template payload into {@link TemplateInfo}. */
 export function parseTemplateInfo(value: WireObject): TemplateInfo {
   return {
     templateId: stringValue(pick(value, "templateId", "templateID", "template_id")),
@@ -190,6 +212,11 @@ export function parseTemplateInfo(value: WireObject): TemplateInfo {
   };
 }
 
+/**
+ * Parses a connect/create/resume payload into {@link SandboxConnection};
+ * normalizes the envd endpoint to a complete HTTPS URL and fills the
+ * connect token from `connectToken` or `envdAccessToken`.
+ */
 export function parseConnection(value: WireObject, sandboxId: string): SandboxConnection {
   let domain = stringValue(value.envdUrl ?? value.domain ?? "");
   if (
@@ -212,6 +239,7 @@ export function parseConnection(value: WireObject, sandboxId: string): SandboxCo
   };
 }
 
+/** Parses a process list entry into {@link ProcessInfo}. */
 export function parseProcessInfo(value: WireObject): ProcessInfo {
   const process =
     value.config && typeof value.config === "object" ? objectValue(value.config) : value;
@@ -226,6 +254,7 @@ export function parseProcessInfo(value: WireObject): ProcessInfo {
   };
 }
 
+/** Parses a filesystem entry into {@link FileInfo}; throws on unknown file types. */
 export function parseFileInfo(value: WireObject): FileInfo {
   const rawType = stringValue(pickOr(value, "file", "type"));
   const type =
@@ -252,6 +281,7 @@ export function parseFileInfo(value: WireObject): FileInfo {
   };
 }
 
+/** Parses an envd `/metrics` payload into {@link EnvdMetrics}. */
 export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
   const oomKills = value.oom_kills;
   return {
@@ -271,6 +301,7 @@ export function parseEnvdMetrics(value: WireObject): EnvdMetrics {
   };
 }
 
+/** Parses an envd OOM kill entry into {@link OomKill}. */
 export function parseOomKill(value: unknown): OomKill {
   const entry = objectValue(value, "EnvD returned an invalid oom kill entry");
   return { seq: numberValue(pick(entry, "seq")), process: stringValue(pick(entry, "process")) };

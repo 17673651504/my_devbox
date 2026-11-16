@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | `templateID` | string | 是 | [模板 ID 或别名](./templates.md)，如 `default` |
 | `buildID` | string | 否 | 固定 Build，省略时使用所选模板的最新可用 Build |
-| `timeout` | integer | 否 | 存活秒数，1–86400；省略或传 `0` 使用服务默认值（通常 300 秒） |
+| `timeout` | integer | 否 | 存活秒数，10–86400；省略时使用服务默认值（通常 300 秒）；显式传 0 返回 400 |
 | `envVars` | object | 否 | 沙箱环境变量，值为字符串 |
 | `metadata` | object | 否 | 业务标签，值为字符串 |
 | `autoPause` | boolean | 否 | 到期后暂停而非销毁，默认 false；与 E2B 请求字段一致 |
@@ -97,11 +97,11 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 
 `POST /sandboxes/{sandboxID}/connect`
 
-请求体可省略，或传入 `{"timeout":300}`。`timeout` 为可选整数，单位秒，范围 1–86400。
+请求体可省略，或传入 `{"timeout":300}`。`timeout` 为可选整数，单位秒，范围 10–86400。
 
 可选 `resume` 为 boolean，默认 true。传 `{"resume":false}` 只为运行中的沙箱准备凭证；沙箱已暂停时返回 409 `sandbox_paused`，不会恢复。SDK 自动换凭证在未允许自动恢复时使用此选项。主动调用 `connect()` 或 `resume()` 仍可恢复 `autoResume=false` 的沙箱。
 
-`timeout=0` 等同于省略。连接并恢复暂停沙箱时可传 `autoPause`；设为 false 会同时关闭自动唤醒。仅连接运行中的沙箱时不会修改暂停策略。
+显式 `timeout=0` 返回 400。连接并恢复暂停沙箱时可传 `autoPause`；设为 false 会同时关闭自动唤醒。仅连接运行中的沙箱时不会修改暂停策略。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
@@ -153,7 +153,7 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/resume" \
 
 `POST /sandboxes/{sandboxID}/timeout`
 
-请求体必须包含整数 `timeout`，单位秒，范围 1–86400。从现在起重设剩余存活时间，可以延长或缩短，仅用于运行中的沙箱。
+请求体必须包含整数 `timeout`，单位秒，范围 10–86400。从现在起重设剩余存活时间，可以延长或缩短，仅用于运行中的沙箱。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/timeout" \
@@ -168,7 +168,7 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/timeout" \
 
 `POST /sandboxes/{sandboxID}/refreshes`
 
-请求体必须包含整数 `duration`，单位秒，范围 1–86400。保证至少剩余指定时间，不累加，也不缩短现有期限，仅用于运行中的沙箱。
+请求体必须包含整数 `duration`，单位秒，范围 10–86400。保证至少剩余指定时间，不累加，也不缩短现有期限，仅用于运行中的沙箱。
 
 ```bash
 curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/refreshes" \
@@ -216,7 +216,7 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 | `sandboxID` / `templateID` | string | 沙箱和来源模板 ID |
 | `state` | string | `running` 或 `paused`；销毁后通过 404 表示不可访问 |
 | `startedAt` | string | 本次运行开始时间，恢复后更新 |
-| `endAt` | string | 运行状态为存活截止时间；暂停状态保留上次运行截止时间，仅用于兼容客户端，不表示暂停记录的删除期限 |
+| `endAt` | string | 运行状态为存活截止时间；暂停成功后更新为暂停完成时间，不表示快照过期时间 |
 | `cpuCount` | integer | CPU 核数 |
 | `memoryMB` / `diskSizeMB` | integer | 内存与磁盘规格，单位 MiB |
 | `metadata` | object | 业务标签，可省略 |
@@ -246,4 +246,4 @@ Python 客户端可通过 `get_host(8080)` 获取[应用端口地址](#applicati
 
 仅支持完整内存快照。其他非 null 网络字段（例如 `dnsServers`、`httpsPorts`）或 `allow_internet_access:false` 返回 400 `network_policy_unsupported`。创建时非 null 的 `cpuCount`、`volumeMounts`、`iam`、`mcp` 或非空 `Idempotency-Key` 返回 400 `unsupported_create_option`；CPU 规格由模板决定，不支持创建幂等。
 
-恢复请求也接受 `autoPause`；省略时保留原生命周期策略。DevBox 的 `timeout=0` 和 `limit=0` 是扩展约定；不支持 E2B 的冷恢复、fork、历史指标、沙箱日志或动态网络更新接口。
+恢复请求也接受 `autoPause`；省略时保留原生命周期策略。DevBox 的 `limit=0` 表示不分页；不支持 E2B 的冷恢复、fork、历史指标、沙箱日志或动态网络更新接口。

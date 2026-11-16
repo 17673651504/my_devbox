@@ -439,8 +439,12 @@ function normalizeStreamTimeout(value?: number): number | undefined {
 function mapTransportError(error: unknown): Error {
   if (error instanceof DevBoxError) return error;
   if (isAbort(error)) return new RequestTimeoutError("request timed out", { cause: error });
-  if (error instanceof Error)
-    return new ServiceUnavailableError("unable to reach DevBox service", { cause: error });
+  if (error instanceof Error) {
+    const detail = error.cause instanceof Error ? error.cause.message : error.message;
+    return new ServiceUnavailableError(`DevBox transport failed (${error.name}): ${detail}`, {
+      cause: error,
+    });
+  }
   return new ServiceUnavailableError("unable to reach DevBox service");
 }
 

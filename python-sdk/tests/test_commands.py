@@ -4,14 +4,47 @@ import base64
 import json
 from collections.abc import Callable, Generator, Iterator, Mapping
 from typing import Any, Literal, cast
+from unittest.mock import patch
 
 import httpx
 import pytest
 
-from devbox import CommandExitError, CommandResult, ConfigurationError, ProtocolError
+from devbox import (
+    CommandExitError, CommandResult, ConfigurationError, ProtocolError, RequestTimeoutError,
+)
 from devbox._transport import AsyncTransport, SyncTransport
 from devbox.commands import AsyncCommands, CommandHandle, Commands
 from devbox.pty import AsyncPty, Pty
+
+
+@pytest.mark.parametrize("elapsed, error", [(2, RequestTimeoutError), (0.1, ProtocolError)])
+def test_command_missing_exit_status_at_deadline(elapsed, error) -> None:
+    def events():
+        yield {"event": {}}
+
+    commands = Commands(lambda: None)
+    handle = CommandHandle(1, commands, events(), reconnect_timeout=1)
+    with (
+        patch.object(commands, "_start", return_value=handle),
+        patch("devbox.commands.time.monotonic", side_effect=[100, 100 + elapsed]),
+    ):
+        with pytest.raises(error):
+            commands.run("test", timeout=1)
+
+
+def test_background_wait_does_not_infer_timeout_from_elapsed_time() -> None:
+    def events():
+        yield {"event": {}}
+
+    commands = Commands(lambda: None)
+    handle = CommandHandle(1, commands, events(), reconnect_timeout=1)
+    with (
+        patch.object(commands, "_start", return_value=handle),
+        patch("devbox.commands.time.monotonic", side_effect=[100, 110]),
+    ):
+        pending = commands.run("test", timeout=1, background=True)
+        with pytest.raises(ProtocolError, match="without an exit status"):
+            pending.wait()
 
 
 @pytest.mark.parametrize("user", [None, "nobody"])

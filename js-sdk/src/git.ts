@@ -1,16 +1,23 @@
 import type { Commands } from "./commands.js";
 import type { CommandResult } from "./models.js";
 
+/** Credentials passed to git via a sandbox-side credential helper. */
 export interface GitCredentials {
   username: string;
   password: string;
 }
 
+/** Options for network-bound git operations. */
 export interface GitNetworkOptions {
   credentials?: GitCredentials;
   timeoutMs?: number | null;
 }
 
+/**
+ * Git operations inside the sandbox, executed through
+ * {@link Commands.run} against the sandbox's git binary. Accessed via
+ * {@link Sandbox.git}.
+ */
 export class Git {
   readonly #commands: Commands;
 
@@ -18,6 +25,7 @@ export class Git {
     this.#commands = commands;
   }
 
+  /** Clones a repository into `path`; defaults to a 300s timeout. */
   clone(
     url: string,
     path: string,
@@ -37,10 +45,12 @@ export class Git {
     });
   }
 
+  /** Prints the working tree status (`git status --short --branch`). */
   status(repository: string): Promise<CommandResult> {
     return this.#run(inRepository(repository, "status", "--short", "--branch"));
   }
 
+  /** Checks out a reference; `options.create` creates a new branch (`-b`). */
   checkout(
     repository: string,
     reference: string,
@@ -51,17 +61,20 @@ export class Git {
     );
   }
 
+  /** Stages paths for commit (defaults to `.`). */
   add(repository: string, paths: string | readonly string[] = "."): Promise<CommandResult> {
     const values = typeof paths === "string" ? [paths] : paths;
     if (values.length === 0) throw new TypeError("at least one git path is required");
     return this.#run(inRepository(repository, "add", "--", ...values));
   }
 
+  /** Creates a commit with the given message. */
   commit(repository: string, message: string): Promise<CommandResult> {
     if (!message.trim()) throw new TypeError("commit message must not be blank");
     return this.#run(inRepository(repository, "commit", "-m", message));
   }
 
+  /** Pulls from the remote (default `origin`); defaults to a 300s timeout. */
   pull(
     repository: string,
     options: GitNetworkOptions & { remote?: string; branch?: string } = {},
@@ -74,6 +87,7 @@ export class Git {
     });
   }
 
+  /** Pushes to the remote (default `origin`); defaults to a 300s timeout. */
   push(
     repository: string,
     options: GitNetworkOptions & { remote?: string; branch?: string } = {},
@@ -86,6 +100,7 @@ export class Git {
     });
   }
 
+  /** Sets a repository-local git config value (`git config key value`). */
   setConfig(repository: string, key: string, value: string): Promise<CommandResult> {
     return this.#run(inRepository(repository, "config", key, value));
   }
