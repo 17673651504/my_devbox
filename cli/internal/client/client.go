@@ -22,6 +22,7 @@ import (
 // by the server (HTTP 401).
 var ErrUnauthorized = errors.New(i18n.T(i18n.Msg.Client.Unauthorized))
 
+// UserAgent is the User-Agent header value sent with every Manager API request.
 var UserAgent = "devbox-cli/dev"
 
 const (
