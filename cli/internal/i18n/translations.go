@@ -5,7 +5,7 @@ func init() {
 		Common: CommonMessages{
 			RootShort: Message{
 				ZH: "DevBox 沙箱管理器命令行客户端",
-				EN: "CLI for the DevBox sandbox manager",
+				EN: "command-line client for the DevBox sandbox manager",
 			},
 			RootLong: Message{
 				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。",
@@ -19,7 +19,7 @@ func init() {
 		Auth: AuthMessages{
 			AuthShort: Message{
 				ZH: "登录 DevBox 沙箱管理器",
-				EN: "Authenticate to the DevBox sandbox manager",
+				EN: "authenticate to the DevBox sandbox manager",
 			},
 			LoginShort: Message{
 				ZH: "登录 CLI",
@@ -63,7 +63,7 @@ func init() {
 			},
 			StatusShort: Message{
 				ZH: "查看当前登录状态",
-				EN: "Show the current login state",
+				EN: "show the current login state",
 			},
 			NotLoggedIn: Message{
 				ZH: "未登录",
@@ -87,7 +87,7 @@ func init() {
 			},
 			APIKeyFlag: Message{
 				ZH: "要校验并保存的 API Key（环境变量 HW_DEVBOX_API_KEY）",
-				EN: "API key to verify and store (env HW_DEVBOX_API_KEY)",
+				EN: "api key to verify and store (env HW_DEVBOX_API_KEY)",
 			},
 			LoginURLNotSet: Message{
 				ZH: "未配置登录页地址：请通过构建期注入设置（-ldflags -X .../internal/config.LoginURL=...）",
@@ -145,7 +145,7 @@ func init() {
 			},
 			CreateShort: Message{
 				ZH: "创建沙箱并进入其终端",
-				EN: "Create a sandbox and connect to its terminal",
+				EN: "create a sandbox and connect to its terminal",
 			},
 			InvalidMetadata: Message{
 				ZH: "--metadata 无效：%w",
@@ -185,7 +185,7 @@ func init() {
 			},
 			ListShort: Message{
 				ZH: "列出沙箱",
-				EN: "List sandboxes",
+				EN: "list sandboxes",
 			},
 			ListEmpty: Message{
 				ZH: "未找到沙箱",
@@ -209,7 +209,7 @@ func init() {
 			},
 			KillShort: Message{
 				ZH: "终止沙箱",
-				EN: "Kill a sandbox",
+				EN: "kill a sandbox",
 			},
 			Killed: Message{
 				ZH: "沙箱 %s 已被终止",
@@ -241,7 +241,7 @@ func init() {
 			},
 			PauseShort: Message{
 				ZH: "暂停沙箱",
-				EN: "Pause a sandbox",
+				EN: "pause a sandbox",
 			},
 			Paused: Message{
 				ZH: "沙箱 %s 已被暂停",
@@ -249,7 +249,7 @@ func init() {
 			},
 			ResumeShort: Message{
 				ZH: "恢复已暂停的沙箱",
-				EN: "Resume a paused sandbox",
+				EN: "resume a paused sandbox",
 			},
 			Resumed: Message{
 				ZH: "沙箱 %s 已被恢复",
@@ -257,11 +257,11 @@ func init() {
 			},
 			ConnectShort: Message{
 				ZH: "进入沙箱交互式终端（暂停的沙箱会自动恢复）",
-				EN: "Open an interactive terminal to a sandbox, resuming it if paused",
+				EN: "open an interactive terminal to a sandbox, resuming it if paused",
 			},
 			TimeoutShort: Message{
 				ZH: "设置沙箱存活时间",
-				EN: "Set the time-to-live of a sandbox",
+				EN: "set the time-to-live of a sandbox",
 			},
 			TimeoutSet: Message{
 				ZH: "沙箱 %s 的存活时间已设置为 %d 秒",
@@ -269,7 +269,7 @@ func init() {
 			},
 			RefreshShort: Message{
 				ZH: "延长沙箱存活时间",
-				EN: "Extend the lifetime of a sandbox",
+				EN: "extend the lifetime of a sandbox",
 			},
 			Refreshed: Message{
 				ZH: "沙箱 %s 的存活时间已延长 %d 秒",
@@ -277,7 +277,7 @@ func init() {
 			},
 			ExecShort: Message{
 				ZH: "在运行中的沙箱里执行命令",
-				EN: "Execute a command in a running sandbox",
+				EN: "execute a command in a running sandbox",
 			},
 			ExecLong: Message{
 				ZH: "在运行中的沙箱里执行命令。\n\nsandbox ID 之后的全部内容透传给远程命令，devbox 选项必须放在 sandbox ID 之前：\n\n  devbox sbx exec -c /tmp <sandboxID> codex exec \"prompt\" --help",
@@ -305,15 +305,15 @@ func init() {
 			},
 			FlagTimeout: Message{
 				ZH: "沙箱存活时间，单位秒（10-86400）",
-				EN: "Time to live for the sandbox in seconds (10-86400)",
+				EN: "time to live for the sandbox in seconds (10-86400)",
 			},
 			FlagNewTimeout: Message{
 				ZH: "新的存活时间，单位秒（10-86400）",
-				EN: "New time to live in seconds (10-86400)",
+				EN: "new time to live in seconds (10-86400)",
 			},
 			FlagTimeoutKeep: Message{
 				ZH: "存活时间，单位秒（10-86400，省略则保持当前 TTL）",
-				EN: "Time to live in seconds (10-86400, omit to keep the current TTL)",
+				EN: "time to live in seconds (10-86400, omit to keep the current TTL)",
 			},
 			InvalidTimeout: Message{
 				ZH: "timeout/duration 必须在 10-86400 秒之间，当前 %d",
@@ -321,11 +321,11 @@ func init() {
 			},
 			FlagMetadata: Message{
 				ZH: "元数据 key=value（可重复）",
-				EN: "Metadata key=value (repeatable)",
+				EN: "metadata key=value (repeatable)",
 			},
 			FlagMetadataFilter: Message{
 				ZH: "元数据过滤，如 \"user=abc&app=prod\"",
-				EN: `Metadata filter, e.g. "user=abc&app=prod"`,
+				EN: `metadata filter, e.g. "user=abc&app=prod"`,
 			},
 			FlagTemplateFilter: Message{
 				ZH: "按模板 ID 或别名过滤，如 base",
@@ -333,43 +333,43 @@ func init() {
 			},
 			FlagEnv: Message{
 				ZH: "环境变量 key=value（可重复）",
-				EN: "Environment variable key=value (repeatable)",
+				EN: "environment variable key=value (repeatable)",
 			},
 			FlagEnvTerm: Message{
 				ZH: "终端会话的环境变量 key=value（可重复）",
-				EN: "Environment variable key=value for the terminal session (repeatable)",
+				EN: "environment variable key=value for the terminal session (repeatable)",
 			},
 			FlagBuildID: Message{
 				ZH: "模板构建标识",
-				EN: "Template build identifier",
+				EN: "template build identifier",
 			},
 			FlagOnTimeout: Message{
 				ZH: "沙箱超时后的动作: pause 或 kill",
-				EN: "Action when sandbox timeout is reached: pause or kill",
+				EN: "action when sandbox timeout is reached: pause or kill",
 			},
 			FlagAutoResume: Message{
 				ZH: "启用沙箱自动恢复，需要 --lifecycle.ontimeout pause",
-				EN: "Enable sandbox auto-resume, requires --lifecycle.ontimeout pause",
+				EN: "enable sandbox auto-resume, requires --lifecycle.ontimeout pause",
 			},
 			FlagNetworkPublic: Message{
 				ZH: "是否允许无需鉴权地直接访问该沙箱实例开放的公网 URL",
-				EN: "Allow direct, unauthenticated access to the public URLs exposed by this sandbox instance",
+				EN: "allow direct, unauthenticated access to the public URLs exposed by this sandbox instance",
 			},
 			FlagDetach: Message{
 				ZH: "只创建沙箱，不进入终端",
-				EN: "Create the sandbox without connecting to its terminal",
+				EN: "create the sandbox without connecting to its terminal",
 			},
 			FlagCwd: Message{
 				ZH: "终端会话在沙箱内的工作目录",
-				EN: "Working directory for the terminal session inside the sandbox",
+				EN: "working directory for the terminal session inside the sandbox",
 			},
 			FlagUser: Message{
 				ZH: "沙箱内以指定用户运行命令或打开终端",
-				EN: "Run the command or open the terminal as the specified user inside the sandbox",
+				EN: "run the command or open the terminal as the specified user inside the sandbox",
 			},
 			FlagState: Message{
 				ZH: "按状态过滤: running 或 paused（可重复）",
-				EN: "Filter by state: running or paused (repeatable)",
+				EN: "filter by state: running or paused (repeatable)",
 			},
 			FlagStartedAfter: Message{
 				ZH: "仅列出此时间之后启动的沙箱，如 2025-01-01T00:00:00Z",
@@ -380,12 +380,12 @@ func init() {
 				EN: "sort order by start time, asc or desc (default: desc)",
 			},
 			InvalidOrder: Message{
-				ZH: "排序方式 %q 无效（预期 'asc' 或 'desc'）",
-				EN: "Invalid order, expected 'asc' or 'desc'",
+				ZH: "排序方式 %q 无效（支持: asc, desc）",
+				EN: "invalid order %q (supported: asc, desc)",
 			},
 			InvalidStartedAfter: Message{
-				ZH: "started-after 无效，预期 ISO 8601 时间戳，如 2025-01-01T00:00:00Z",
-				EN: "Invalid date, expected an ISO 8601 timestamp, eg. 2025-01-01T00:00:00Z",
+				ZH: "日期 %q 无效（预期 ISO 8601 时间戳，如 2025-01-01T00:00:00Z）",
+				EN: "invalid date %q (expected an ISO 8601 timestamp, eg. 2025-01-01T00:00:00Z)",
 			},
 			InvalidLimit: Message{
 				ZH: "limit 必须在 0-1000 之间，当前 %d",
@@ -393,29 +393,29 @@ func init() {
 			},
 			FlagLimit: Message{
 				ZH: "返回的沙箱数量上限（0 表示不限制）",
-				EN: "Limit the number of sandboxes returned (0 for no limit)",
+				EN: "limit the number of sandboxes returned (0 for no limit)",
 			},
 			FlagFormat: Message{
 				ZH: "输出格式: pretty 或 json",
-				EN: "Output format: pretty or json",
+				EN: "output format: pretty or json",
 			},
 			FlagDuration: Message{
 				ZH: "存活时间延长秒数（10-86400）",
-				EN: "Lifetime extension in seconds (10-86400)",
+				EN: "lifetime extension in seconds (10-86400)",
 			},
 			FlagBackground: Message{
 				ZH: "后台运行并立即返回",
-				EN: "Run in background and return immediately",
+				EN: "run in background and return immediately",
 			},
 		},
 		Template: TemplateMessages{
 			TemplateShort: Message{
 				ZH: "管理沙箱模板",
-				EN: "Manage sandbox templates",
+				EN: "manage sandbox templates",
 			},
 			ListShort: Message{
 				ZH: "列出模板",
-				EN: "List templates",
+				EN: "list templates",
 			},
 			ListEmpty: Message{
 				ZH: "未找到模板",
