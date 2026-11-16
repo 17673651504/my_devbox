@@ -312,8 +312,8 @@ func init() {
 				EN: "new time to live in seconds (10-86400)",
 			},
 			FlagTimeoutKeep: Message{
-				ZH: "存活时间，单位秒（10-86400，省略则保持当前 TTL）",
-				EN: "time to live in seconds (10-86400, omit to keep the current TTL)",
+				ZH: "存活时间，单位秒（10-86400）",
+				EN: "time to live in seconds (10-86400)",
 			},
 			InvalidTimeout: Message{
 				ZH: "timeout/duration 必须在 10-86400 秒之间，当前 %d",

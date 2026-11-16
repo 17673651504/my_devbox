@@ -626,10 +626,10 @@ func init() {
 	sandboxKillCmd.Flags().StringVarP(&sandboxKillMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagKillMetadata))
 
-	sandboxResumeCmd.Flags().Int32VarP(&sandboxResumeTimeout, "timeout", "t", 300,
+	sandboxResumeCmd.Flags().Int32VarP(&sandboxResumeTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 
-	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 300,
+	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectCwd, "cwd", "c", "",
 		i18n.T(i18n.Msg.Sandbox.FlagCwd))
