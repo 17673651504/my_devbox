@@ -588,7 +588,7 @@ func init() {
 	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateMetadata, "metadata", "m", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagMetadata))
 	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateEnv, "env", "e", nil,
-		i18n.T(i18n.Msg.Sandbox.FlagEnv))
+		i18n.T(i18n.Msg.Sandbox.FlagEnvSession))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateBuildID, "build-id", "b", "",
 		i18n.T(i18n.Msg.Sandbox.FlagBuildID))
 	sandboxCreateCmd.Flags().StringVar(&sandboxCreateOnTimeout, "lifecycle.ontimeout", "",
