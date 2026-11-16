@@ -89,7 +89,7 @@ try {
 
 非零退出码默认抛出 `CommandExitError`。需要自行判断时，Python 传入 `check=False`，JS 传入 `{ check: false }`。
 
-Python 命令到达超时期限且输出流结束却未返回退出状态时，抛出 `RequestTimeoutError`；如果输出流提前结束且没有退出状态，则抛出 `ProtocolError`。命令超时与沙箱存活时间独立。
+Python 前台命令到达超时期限且输出流正常结束却未返回退出状态时，抛出 `RequestTimeoutError`。后台句柄的 `wait()` 不根据调用时间推断超时；流结束但没有退出状态时返回 `ProtocolError`，明确的超时仍返回 `RequestTimeoutError`。命令超时与沙箱存活时间独立。
 
 ## 指定执行用户
 
