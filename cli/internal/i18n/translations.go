@@ -339,6 +339,10 @@ func init() {
 				ZH: "终端会话的环境变量 key=value（可重复）",
 				EN: "environment variable key=value for the terminal session (repeatable)",
 			},
+			FlagEnvSession: Message{
+				ZH: "为终端会话设置环境变量 key=value（可重复）",
+				EN: "set environment variable for the terminal session (repeatable)",
+			},
 			FlagBuildID: Message{
 				ZH: "模板构建标识",
 				EN: "template build identifier",

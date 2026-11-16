@@ -102,6 +102,7 @@ type SandboxMessages struct {
 	FlagTemplateFilter  Message
 	FlagEnv             Message
 	FlagEnvTerm         Message
+	FlagEnvSession      Message
 	FlagBuildID         Message
 	FlagOnTimeout       Message
 	FlagAutoResume      Message
