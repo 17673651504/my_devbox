@@ -194,7 +194,7 @@ export class Sandbox {
 
   /**
    * Shortcut that creates a sandbox with its own control transport; pass
-   * {@link DevBoxOptions} (e.g. `apiKey`) alongside {@link CreateSandboxOptions}.
+   * {@link DevBoxOptions} (eg. `apiKey`) alongside {@link CreateSandboxOptions}.
    */
   static async create(
     template = "default",
@@ -216,7 +216,7 @@ export class Sandbox {
 
   /**
    * Shortcut that connects to an existing sandbox with its own control
-   * transport; pass {@link DevBoxOptions} (e.g. `apiKey`) alongside
+   * transport; pass {@link DevBoxOptions} (eg. `apiKey`) alongside
    * {@link ConnectSandboxOptions}.
    */
   static async connect(
