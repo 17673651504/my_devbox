@@ -543,7 +543,7 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 		queryValues := queryURL.Query()
 		// rawQueryFragments collects pre-encoded query fragments from
 		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		// per the OpenAPI spec (eg. "color=blue,black,brown").
 		var rawQueryFragments []string
 
 		for _, qp := range []struct {

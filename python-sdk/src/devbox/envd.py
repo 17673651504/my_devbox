@@ -1,3 +1,9 @@
+"""Data-plane access to the sandbox-local envd service: metrics, environment
+variables and health.
+
+Exposed as :attr:`Sandbox.envd` / :attr:`AsyncSandbox.envd`.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping

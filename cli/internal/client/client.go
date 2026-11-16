@@ -22,6 +22,7 @@ import (
 // by the server (HTTP 401).
 var ErrUnauthorized = errors.New(i18n.T(i18n.Msg.Client.Unauthorized))
 
+// UserAgent is the User-Agent header value sent with every Manager API request.
 var UserAgent = "devbox-cli/dev"
 
 const (
@@ -38,7 +39,7 @@ type Client struct {
 
 // APIError is an error returned by the DevBox API. It exposes the HTTP status
 // code and the human-readable message so callers can branch on the failure
-// cause (e.g. 401 == bad API key).
+// cause (eg. 401 == bad API key).
 type APIError struct {
 	StatusCode int
 	Message    string

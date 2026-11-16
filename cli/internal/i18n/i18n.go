@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
+// Lang is a supported CLI language code.
 type Lang string
 
+// Supported language codes.
 const (
 	ZH Lang = "zh"
 	EN Lang = "en"

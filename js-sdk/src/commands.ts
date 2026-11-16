@@ -12,23 +12,23 @@ import {
 
 const PROCESS = "/process.Process";
 type TransportProvider = () => Promise<Transport>;
+/** Callback receiving one decoded chunk of process output. */
 export type OutputHandler = (value: string) => void | Promise<void>;
 
+/** Options for {@link Commands.run}. */
 export interface RunOptions {
-  /** Return a handle immediately; pass output callbacks to its wait() method. */
   background?: boolean;
   envs?: Record<string, string>;
   cwd?: string;
-  /** Existing sandbox user. Defaults to the sandbox's configured user. */
   user?: string;
   stdin?: boolean;
-  /** Output stream timeout in milliseconds. Use null to disable it. */
   timeoutMs?: number | null;
   onStdout?: OutputHandler;
   onStderr?: OutputHandler;
   check?: boolean;
 }
 
+/** Options for {@link CommandHandle.wait}. */
 export interface WaitOptions {
   onStdout?: OutputHandler;
   onStderr?: OutputHandler;
@@ -40,6 +40,11 @@ interface EventSource {
   close(): void;
 }
 
+/**
+ * Handle to a process started in the sandbox. Created by
+ * `commands.run(..., { background: true })`, `commands.connect()` or
+ * `pty.start()`. Consumes the process event stream until exit.
+ */
 export class CommandHandle {
   /** Process ID inside the sandbox. */
   readonly pid: number;
@@ -108,11 +113,13 @@ export class CommandHandle {
     await this.#commands.closeStdin(this.pid);
   }
 
+  /** Delivers a signal to the process; only `SIGTERM` and `SIGKILL` are supported. */
   async sendSignal(signal: "SIGTERM" | "SIGKILL"): Promise<void> {
     this.#ensureActive();
     await this.#commands.sendSignal(this.pid, signal);
   }
 
+  /** Force-kills the process (`SIGKILL`). */
   kill(): Promise<void> {
     return this.sendSignal("SIGKILL");
   }
@@ -128,6 +135,10 @@ export class CommandHandle {
   }
 }
 
+/**
+ * Process operations against a sandbox: start commands, list processes and
+ * deliver input/signals by PID. Accessed via {@link Sandbox.commands}.
+ */
 export class Commands {
   readonly #transport: TransportProvider;
 
@@ -141,6 +152,7 @@ export class Commands {
   async run(command: string, options?: RunOptions & { background?: false }): Promise<CommandResult>;
   /** Run a command, returning a handle or result according to background. */
   async run(command: string, options: RunOptions): Promise<CommandResult | CommandHandle>;
+  /** Implementation of the {@link Commands.run} overloads. */
   async run(command: string, options: RunOptions = {}): Promise<CommandResult | CommandHandle> {
     if (options.background && (options.onStdout || options.onStderr)) {
       throw new TypeError("background output callbacks belong on handle.wait()");
@@ -170,24 +182,28 @@ export class Commands {
     );
   }
 
+  /** Lists all processes in the sandbox with their command lines and state. */
   async list(): Promise<ProcessInfo[]> {
     const payload = objectValue(
       await (await this.#transport()).connectUnary(`${PROCESS}/List`, {}),
     );
-    const processes = payload.processes;
+    const processes = payload.processes ?? [];
     if (!Array.isArray(processes)) throw new ProtocolError("process response is invalid");
     return processes.map((item) => objectValue(item)).map(parseProcessInfo);
   }
 
+  /** Writes data to the stdin of a running (non-PTY) process. */
   sendStdin(pid: number, data: string | Uint8Array): Promise<void> {
     return this.sendInput(pid, data, "stdin");
   }
 
+  /** Sends EOF to a running (non-PTY) process so it can finish consuming input. */
   async closeStdin(pid: number): Promise<void> {
     validatePid(pid);
     await (await this.#transport()).connectUnary(`${PROCESS}/CloseStdin`, { process: { pid } });
   }
 
+  /** Delivers `SIGTERM` or `SIGKILL` to a running process. */
   async sendSignal(pid: number, signal: "SIGTERM" | "SIGKILL"): Promise<void> {
     validatePid(pid);
     await (await this.#transport()).connectUnary(`${PROCESS}/SendSignal`, {

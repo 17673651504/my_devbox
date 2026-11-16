@@ -170,7 +170,7 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	// Fail closed: only the login page origin may drive this callback. A
 	// browser always attaches Origin on a cross-origin POST, so a missing or
 	// mismatched header means the request does not come from the login page
-	// (e.g. a web page trying to plant its own API key).
+	// (eg. a web page trying to plant its own API key).
 	if reqOrigin := r.Header.Get("Origin"); reqOrigin != s.origin {
 		slog.Warn("login callback rejected: origin mismatch",
 			"remote", r.RemoteAddr,
@@ -208,7 +208,7 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 		"remote", r.RemoteAddr,
 		"body", maskBodyKeys(data),
 	)
-	// When the login page reports a business error code (e.g. the API key limit is
+	// When the login page reports a business error code (eg. the API key limit is
 	// exceeded), direct the user to the API key management page.
 	if cb.ErrorCode != "" && cb.ErrorCode != loginSuccessCode {
 		w.WriteHeader(http.StatusBadRequest)

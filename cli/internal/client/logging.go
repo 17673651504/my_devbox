@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -38,7 +39,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 				_ = req.Body.Close()
 				req.Body = io.NopCloser(bytes.NewReader(data))
 				if len(data) > 0 {
-					attrs = append(attrs, "body", truncateBody(string(data), len(data)))
+					attrs = append(attrs, "body", truncateBody(maskSensitiveKeys(string(data)), len(data)))
 				}
 			}
 		} else if req.Body != nil {
@@ -74,7 +75,7 @@ func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		_ = resp.Body.Close()
 		resp.Body = io.NopCloser(bytes.NewReader(data))
 		if readErr == nil {
-			attrs = append(attrs, "body", truncateBody(string(data), len(data)))
+			attrs = append(attrs, "body", truncateBody(maskSensitiveKeys(string(data)), len(data)))
 		} else {
 			attrs = append(attrs, "body", fmt.Sprintf("<unreadable: %v>", readErr))
 		}
@@ -96,4 +97,53 @@ func truncateBody(body string, total int) string {
 		return body[:maxLoggedBody] + fmt.Sprintf("... (%d bytes total)", total)
 	}
 	return body
+}
+
+// sensitiveBodyKeys lists the JSON body fields that carry connection
+// credentials; their values are masked before any body reaches the debug log
+// (the envd relay cookie and the X-API-Key header are masked separately).
+var sensitiveBodyKeys = map[string]struct{}{
+	"connectToken":    {},
+	"envdAccessToken": {},
+}
+
+// maskSensitiveKeys masks credential fields inside a JSON body (objects and
+// arrays, recursively) so `-v` runs never log a connect token in clear text.
+// Bodies that are not valid JSON are returned unchanged; the caller's body
+// string is only used for logging, so re-marshaling never affects behavior.
+func maskSensitiveKeys(body string) string {
+	var v any
+	if err := json.Unmarshal([]byte(body), &v); err != nil {
+		return body
+	}
+	out, err := json.Marshal(maskJSONValue(v))
+	if err != nil {
+		return body
+	}
+	return string(out)
+}
+
+// maskJSONValue walks a decoded JSON value and masks the string values of
+// sensitive keys (see sensitiveBodyKeys) at any nesting depth.
+func maskJSONValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, item := range t {
+			if _, sensitive := sensitiveBodyKeys[k]; sensitive {
+				if s, ok := item.(string); ok && s != "" {
+					t[k] = mask.Key(s)
+				}
+				continue
+			}
+			t[k] = maskJSONValue(item)
+		}
+		return t
+	case []any:
+		for i, item := range t {
+			t[i] = maskJSONValue(item)
+		}
+		return t
+	default:
+		return v
+	}
 }

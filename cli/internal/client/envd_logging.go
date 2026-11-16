@@ -31,7 +31,10 @@ type envdLoggingTransport struct {
 }
 
 func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if !slog.Default().Enabled(req.Context(), slog.LevelDebug) {
+	// Quiet requests (interactive PTY keystrokes and resize streams) bypass
+	// the debug log entirely; one log pair per keystroke would flood the
+	// raw-mode terminal and make the session unusable under -v.
+	if req.Context().Value(quietKey{}) != nil || !slog.Default().Enabled(req.Context(), slog.LevelDebug) {
 		return t.base.RoundTrip(req)
 	}
 
