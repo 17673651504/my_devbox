@@ -39,7 +39,7 @@ type Client struct {
 
 // APIError is an error returned by the DevBox API. It exposes the HTTP status
 // code and the human-readable message so callers can branch on the failure
-// cause (e.g. 401 == bad API key).
+// cause (eg. 401 == bad API key).
 type APIError struct {
 	StatusCode int
 	Message    string

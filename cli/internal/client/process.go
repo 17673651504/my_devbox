@@ -75,7 +75,7 @@ type ProcessClient struct {
 }
 
 // NewProcessClient builds a client against the sandbox domain. The domain
-// embeds the envd port (e.g. https://<tunnel>-49983.host); when it cannot be
+// embeds the envd port (eg. https://<tunnel>-49983.host); when it cannot be
 // parsed the default 49983 is used. A non-empty user is sent via HTTP Basic
 // auth on every request so envd starts processes as that sandbox user. All
 // traffic is logged at debug level (see envdLoggingTransport) so `-v` runs
@@ -214,7 +214,7 @@ func (p *ProcessClient) SendSignal(ctx context.Context, pid uint32, sig process.
 	return err
 }
 
-// IsNotFound reports whether err is an envd not_found RPC error, e.g. when
+// IsNotFound reports whether err is an envd not_found RPC error, eg. when
 // connecting to a process that already exited.
 func IsNotFound(err error) bool {
 	return connect.CodeOf(err) == connect.CodeNotFound

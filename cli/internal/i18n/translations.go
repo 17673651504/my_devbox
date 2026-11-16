@@ -324,12 +324,12 @@ func init() {
 				EN: "metadata key=value (repeatable)",
 			},
 			FlagMetadataFilter: Message{
-				ZH: "元数据过滤，如 \"user=abc&app=prod\"",
-				EN: `metadata filter, e.g. "user=abc&app=prod"`,
+				ZH: "元数据过滤，如 user=abc&app=prod",
+				EN: `metadata filter, eg. user=abc&app=prod`,
 			},
 			FlagTemplateFilter: Message{
 				ZH: "按模板 ID 或别名过滤，如 base",
-				EN: "filter by template ID or alias, e.g. base",
+				EN: "filter by template ID or alias, eg. base",
 			},
 			FlagEnv: Message{
 				ZH: "环境变量 key=value（可重复）",
