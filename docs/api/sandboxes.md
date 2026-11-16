@@ -216,7 +216,7 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 | `sandboxID` / `templateID` | string | 沙箱和来源模板 ID |
 | `state` | string | `running` 或 `paused`；销毁后通过 404 表示不可访问 |
 | `startedAt` | string | 本次运行开始时间，恢复后更新 |
-| `endAt` | string | 运行状态为存活截止时间；暂停状态保留上次运行截止时间，仅用于兼容客户端，不表示暂停记录的删除期限 |
+| `endAt` | string | 运行状态为存活截止时间；暂停成功后更新为暂停完成时间，不表示快照过期时间 |
 | `cpuCount` | integer | CPU 核数 |
 | `memoryMB` / `diskSizeMB` | integer | 内存与磁盘规格，单位 MiB |
 | `metadata` | object | 业务标签，可省略 |
