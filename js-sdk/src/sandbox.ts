@@ -29,6 +29,7 @@ const TOKEN_REFRESH_WINDOW_SECONDS = 300;
 const CONNECT_TOKEN_REFRESHED_HEADER = "X-Devbox-Connect-Token-Refreshed";
 const CONNECT_TOKEN_EXPIRATION_HEADER = "X-Devbox-Connect-Token-Expiration";
 
+/** Options for {@link Sandboxes.create}. */
 export interface CreateSandboxOptions {
   timeout?: number;
   envs?: Readonly<Record<string, string>>;
@@ -38,15 +39,18 @@ export interface CreateSandboxOptions {
   network?: { allowPublicTraffic?: boolean };
 }
 
+/** Options for {@link Sandboxes.connect}. */
 export interface ConnectSandboxOptions {
   timeout?: number;
 }
 
+/** Options for {@link Sandbox.pause}. */
 export interface PauseSandboxOptions {
   memory?: boolean;
   mode?: "full" | "filesystem";
 }
 
+/** Options for {@link Sandboxes.list}. */
 export interface ListSandboxesOptions {
   template?: string;
   metadata?: string;
@@ -64,6 +68,11 @@ interface SandboxContext {
   ownsControl?: boolean;
 }
 
+/**
+ * Sandbox operations against the Manager API. Accessed via
+ * {@link DevBox.sandboxes}. Each create/connect returns a ready-to-use
+ * {@link Sandbox} handle with a live envd connection.
+ */
 export class Sandboxes {
   readonly #transport: Transport;
   readonly #context: SandboxContext;
@@ -73,6 +82,10 @@ export class Sandboxes {
     this.#context = context;
   }
 
+  /**
+   * Creates a sandbox from a template (default "default") and returns its
+   * handle with a live envd connection.
+   */
   async create(template = "default", options: CreateSandboxOptions = {}): Promise<Sandbox> {
     const payload = await this.#transport.request("POST", "/sandboxes", {
       json: createBody(template, options),
@@ -81,6 +94,10 @@ export class Sandboxes {
     return Sandbox.fromConnection(this.#transport, info, connection, this.#context);
   }
 
+  /**
+   * Connects to an existing sandbox (auto-resuming it when paused) and
+   * returns its handle with fresh credentials.
+   */
   async connect(sandboxId: string, options: ConnectSandboxOptions = {}): Promise<Sandbox> {
     const payload = await this.#transport.request(
       "POST",
@@ -93,12 +110,14 @@ export class Sandboxes {
     return Sandbox.fromConnection(this.#transport, info, connection, this.#context);
   }
 
+  /** Returns full details for a sandbox. */
   async get(sandboxId: string): Promise<SandboxInfo> {
     return parseSandboxInfo(
       objectValue(await this.#transport.request("GET", `/sandboxes/${identifier(sandboxId)}`)),
     );
   }
 
+  /** Returns a filtered, paginated list of sandboxes. */
   async list(options: ListSandboxesOptions = {}): Promise<Page<SandboxInfo>> {
     const params: Record<string, string | number> = {};
     if (options.template) params.template = options.template;
@@ -128,6 +147,12 @@ export class Sandboxes {
   }
 }
 
+/**
+ * Handle of a single sandbox: cached info, connection credentials and the
+ * data-plane namespaces (commands, files, pty, git, envd). Created by
+ * {@link Sandboxes.create}/{@link Sandboxes.connect} or the static
+ * {@link Sandbox.create}/{@link Sandbox.connect} shortcuts.
+ */
 export class Sandbox {
   readonly commands: Commands;
   readonly files: Filesystem;
@@ -167,6 +192,10 @@ export class Sandbox {
     return new Sandbox(control, info, connection, context);
   }
 
+  /**
+   * Shortcut that creates a sandbox with its own control transport; pass
+   * {@link DevBoxOptions} (e.g. `apiKey`) alongside {@link CreateSandboxOptions}.
+   */
   static async create(
     template = "default",
     options: CreateSandboxOptions & DevBoxOptions = {},
@@ -185,6 +214,11 @@ export class Sandbox {
     }
   }
 
+  /**
+   * Shortcut that connects to an existing sandbox with its own control
+   * transport; pass {@link DevBoxOptions} (e.g. `apiKey`) alongside
+   * {@link ConnectSandboxOptions}.
+   */
   static async connect(
     sandboxId: string,
     options: DevBoxOptions & ConnectSandboxOptions = {},
@@ -201,10 +235,12 @@ export class Sandbox {
     }
   }
 
+  /** The sandbox ID of this handle. */
   get sandboxId(): string {
     return this.#info.sandboxId;
   }
 
+  /** Cached sandbox info (fetched at create/connect; refreshed by {@link getInfo}). */
   get info(): SandboxInfo {
     return this.#info;
   }
@@ -214,6 +250,7 @@ export class Sandbox {
     return gatewayUrl(this.#connection, this.#context.gatewayUrl);
   }
 
+  /** Fetches fresh sandbox info from the Manager and updates the cache. */
   async getInfo(): Promise<SandboxInfo> {
     this.#info = parseSandboxInfo(
       objectValue(await this.#control.request("GET", `/sandboxes/${identifier(this.sandboxId)}`)),
@@ -221,6 +258,7 @@ export class Sandbox {
     return this.#info;
   }
 
+  /** Reports whether the sandbox is running; false when it no longer exists. */
   async isRunning(): Promise<boolean> {
     try {
       return (await this.getInfo()).state === SandboxState.Running;
@@ -231,6 +269,7 @@ export class Sandbox {
     }
   }
 
+  /** Sets the sandbox time-to-live in seconds from now. */
   async setTimeout(timeout: number): Promise<void> {
     await this.#control.request("POST", `/sandboxes/${identifier(this.sandboxId)}/timeout`, {
       json: { timeout: checkedTimeout(timeout) },
@@ -276,6 +315,10 @@ export class Sandbox {
     return this;
   }
 
+  /**
+   * Kills the sandbox. Returns false (instead of throwing) when the sandbox
+   * was already gone; closes the gateway transport either way.
+   */
   async kill(): Promise<boolean> {
     try {
       await this.#control.request("DELETE", `/sandboxes/${identifier(this.sandboxId)}`);
@@ -294,6 +337,10 @@ export class Sandbox {
     return true;
   }
 
+  /**
+   * Releases the resources of this handle (gateway transport and, when the
+   * handle owns it, the control transport). Does not stop the sandbox.
+   */
   async close(): Promise<void> {
     await this.#closeGateway();
     if (this.#context.ownsControl) await this.#control.close();

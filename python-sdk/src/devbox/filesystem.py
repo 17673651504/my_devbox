@@ -1,3 +1,10 @@
+"""File operations inside a sandbox: read/write files, list directories,
+watch changes and upload/download.
+
+Exposed as :attr:`Sandbox.files` / :attr:`AsyncSandbox.files`; paths must be
+absolute.
+"""
+
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Mapping, Sequence
@@ -129,10 +136,12 @@ class AsyncFilesystem:
         self._transport = transport
 
     async def read_bytes(self, path: str) -> bytes:
+        """Read a remote file without text decoding."""
         transport = await self._transport()
         return await transport.request_bytes("GET", "/files", params={"path": _path(path)})
 
     async def read(self, path: str, *, encoding: str = "utf-8") -> str:
+        """Read and decode a remote text file."""
         return (await self.read_bytes(path)).decode(encoding)
 
     async def write(
@@ -142,6 +151,7 @@ class AsyncFilesystem:
         *,
         encoding: str = "utf-8",
     ) -> FileInfo:
+        """Create or replace one remote file."""
         content = data.encode(encoding) if isinstance(data, str) else data
         transport = await self._transport()
         payload = await transport.request_content(
@@ -156,12 +166,14 @@ class AsyncFilesystem:
     async def write_batch(
         self, files: Mapping[str, str | bytes], *, encoding: str = "utf-8"
     ) -> tuple[FileInfo, ...]:
+        """Write several remote files in mapping order."""
         result: list[FileInfo] = []
         for path, data in files.items():
             result.append(await self.write(path, data, encoding=encoding))
         return tuple(result)
 
     async def list(self, path: str, *, depth: int = 1) -> tuple[FileInfo, ...]:
+        """List entries below a remote directory."""
         if depth < 1:
             raise ValueError("depth must be positive")
         transport = await self._transport()
@@ -171,11 +183,13 @@ class AsyncFilesystem:
         return tuple(FileInfo.from_wire(item) for item in _items(payload, "entries"))
 
     async def stat(self, path: str) -> FileInfo:
+        """Return metadata for a remote path."""
         transport = await self._transport()
         payload = await transport.connect_unary(f"{_FILESYSTEM}/Stat", {"path": _path(path)})
         return FileInfo.from_wire(_entry(payload))
 
     async def exists(self, path: str) -> bool:
+        """Return whether a remote path exists."""
         try:
             await self.stat(path)
             return True
@@ -183,10 +197,12 @@ class AsyncFilesystem:
             return False
 
     async def make_dir(self, path: str) -> None:
+        """Create a remote directory."""
         transport = await self._transport()
         await transport.connect_unary(f"{_FILESYSTEM}/MakeDir", {"path": _path(path)})
 
     async def move(self, source: str, destination: str) -> None:
+        """Move or rename a remote path."""
         transport = await self._transport()
         await transport.connect_unary(
             f"{_FILESYSTEM}/Move",
@@ -194,13 +210,16 @@ class AsyncFilesystem:
         )
 
     async def remove(self, path: str) -> None:
+        """Remove a remote file or directory."""
         transport = await self._transport()
         await transport.connect_unary(f"{_FILESYSTEM}/Remove", {"path": _path(path)})
 
     async def upload(self, local_path: str | Path, remote_path: str) -> FileInfo:
+        """Upload one local file to the sandbox."""
         return await self.write(remote_path, Path(local_path).read_bytes())
 
     async def download(self, remote_path: str, local_path: str | Path) -> Path:
+        """Download one sandbox file to the local machine."""
         destination = Path(local_path)
         destination.write_bytes(await self.read_bytes(remote_path))
         return destination
@@ -212,6 +231,7 @@ class AsyncFilesystem:
         recursive: bool = False,
         include_entry: bool = True,
     ) -> AsyncGenerator[FileWatchEvent, None]:
+        """Yield filesystem changes until the stream is closed."""
         transport = await self._transport()
         events = transport.connect_stream(
             f"{_FILESYSTEM}/WatchDir",

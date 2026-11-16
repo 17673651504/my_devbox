@@ -1,3 +1,10 @@
+"""Exception types and API error decoding for the DevBox SDK.
+
+Every error raised by the SDK derives from :class:`DevBoxError`; HTTP and
+Connect (EnvD) error responses are mapped to the concrete subclasses by
+:func:`raise_for_response` and :func:`raise_connect_error`.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -14,6 +21,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class ErrorDetail:
+    """One structured detail entry from a DevBox API error response."""
+
     code: str
     message: str
     target: str | None = None
@@ -48,52 +57,55 @@ class DevBoxError(Exception):
 
 
 class ConfigurationError(DevBoxError):
-    pass
+    """Invalid client configuration (blank API key, bad URL, bad timeout...)."""
 
 
 class AuthenticationError(DevBoxError):
-    pass
+    """The API key was rejected (HTTP 401)."""
 
 
 class PermissionDeniedError(DevBoxError):
-    pass
+    """The API key lacks permission for the operation (HTTP 403)."""
 
 
 class ValidationError(DevBoxError):
-    pass
+    """The request payload was rejected (HTTP 400/422)."""
 
 
 class NotFoundError(DevBoxError):
-    pass
+    """The referenced resource does not exist (HTTP 404)."""
 
 
 class ConflictError(DevBoxError):
-    pass
+    """The operation conflicts with the current resource state (HTTP 409)."""
 
 
 class RateLimitError(DevBoxError):
-    pass
+    """Rate limit exceeded (HTTP 429); see :attr:`DevBoxError.retry_after`."""
 
 
 class RequestTimeoutError(DevBoxError):
-    pass
+    """The request timed out (HTTP 408 or transport timeout)."""
 
 
 class ServiceUnavailableError(DevBoxError):
-    pass
+    """The service is temporarily unavailable (HTTP 503)."""
 
 
 class ProtocolError(DevBoxError):
-    pass
+    """The server response violated the SDK protocol expectations."""
 
 
 class CommandExitError(DevBoxError):
+    """Raised when a command exits nonzero and ``check`` is true."""
+
     def __init__(self, result: CommandResult) -> None:
         super().__init__(f"command exited with status {result.exit_code}", code="COMMAND_EXIT")
         self.result = result
 
 
 def transport_error(error: Exception) -> Exception:
+    """Maps an httpx transport failure to a :class:`DevBoxError` subclass."""
     if isinstance(error, httpx.TimeoutException):
         return RequestTimeoutError(f"request timed out ({type(error).__name__})")
     if isinstance(error, httpx.HTTPError):
@@ -103,6 +115,7 @@ def transport_error(error: Exception) -> Exception:
 
 
 def raise_for_response(response: httpx.Response) -> NoReturn:
+    """Raises the matching :class:`DevBoxError` subclass for a failed HTTP response."""
     payload: Mapping[str, Any] = {}
     try:
         decoded = response.json()
@@ -149,6 +162,7 @@ def raise_for_response(response: httpx.Response) -> NoReturn:
 
 
 def raise_connect_error(error: Mapping[str, Any]) -> NoReturn:
+    """Raises the matching :class:`DevBoxError` subclass for a Connect (EnvD) error."""
     code = str(error.get("code", "unknown"))
     message = str(error.get("message") or "EnvD request failed")
     status_code, exception_type = {

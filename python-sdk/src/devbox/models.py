@@ -1,3 +1,9 @@
+"""Data models and wire (API payload) parsing for the DevBox Python SDK.
+
+The ``from_wire`` classmethods accept the documented field names and common
+snake_case variants, and raise :class:`ProtocolError` on invalid values.
+"""
+
 from __future__ import annotations
 
 import math
@@ -11,12 +17,16 @@ from .errors import ProtocolError
 
 
 class SandboxState(str, Enum):
+    """Lifecycle states of a sandbox as reported by the Manager API."""
+
     RUNNING = "running"
     PAUSED = "paused"
     STOPPED = "stopped"
 
 
 class FileType(str, Enum):
+    """Entry types returned by the sandbox filesystem."""
+
     FILE = "file"
     DIRECTORY = "directory"
     SYMLINK = "symlink"
@@ -24,11 +34,14 @@ class FileType(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class SandboxLifecycle:
+    """Deadline behavior requested at sandbox creation."""
+
     on_timeout: Literal["kill", "pause"] = "kill"
     auto_resume: bool = False
 
     @classmethod
     def from_wire(cls, value: object) -> SandboxLifecycle | None:
+        """Parses a lifecycle payload; returns ``None`` when absent."""
         if not isinstance(value, Mapping):
             return None
         on_timeout = str(value.get("onTimeout", "kill"))
@@ -42,6 +55,8 @@ class SandboxLifecycle:
 
 @dataclass(frozen=True, slots=True)
 class TemplateInfo:
+    """A sandbox template: an image with its default resource footprint."""
+
     template_id: str
     name: str
     aliases: tuple[str, ...]
@@ -53,6 +68,7 @@ class TemplateInfo:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> TemplateInfo:
+        """Parses a Manager API template payload."""
         return cls(
             template_id=str(_pick(value, "templateId", "templateID", "template_id")),
             name=str(
@@ -70,6 +86,8 @@ class TemplateInfo:
 
 @dataclass(frozen=True, slots=True)
 class SandboxInfo:
+    """Sandbox details as reported by the Manager API."""
+
     sandbox_id: str
     template_id: str
     state: SandboxState
@@ -83,6 +101,7 @@ class SandboxInfo:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> SandboxInfo:
+        """Parses a Manager API sandbox payload."""
         return cls(
             sandbox_id=str(_pick(value, "sandboxId", "sandboxID", "sandbox_id", "id")),
             template_id=str(
@@ -105,6 +124,8 @@ class SandboxInfo:
 
 @dataclass(frozen=True, slots=True)
 class SandboxConnection:
+    """Connection credentials for the sandbox-local envd service."""
+
     sandbox_id: str
     domain: str
     tunnel_id: str = ""
@@ -114,6 +135,9 @@ class SandboxConnection:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any], sandbox_id: str) -> SandboxConnection:
+        """Parses a connect/create/resume payload; normalizes the envd
+        endpoint to a complete HTTPS URL and fills the connect token from
+        ``connectToken`` or ``envdAccessToken``."""
         domain = str(value.get("domain") or "")
         url = value.get("envdUrl")
         if not url:
@@ -136,6 +160,8 @@ class SandboxConnection:
 
 @dataclass(frozen=True, slots=True)
 class ProcessInfo:
+    """A process running (or previously run) in the sandbox."""
+
     pid: int
     command: str
     running: bool
@@ -143,6 +169,7 @@ class ProcessInfo:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> ProcessInfo:
+        """Parses a process list entry."""
         config = value.get("config")
         process = config if isinstance(config, Mapping) else value
         cmd = str(_pick(process, "command", "cmd", default=""))
@@ -159,6 +186,8 @@ class ProcessInfo:
 
 @dataclass(frozen=True, slots=True)
 class OutputChunk:
+    """One decoded chunk of command output."""
+
     stream: str
     data: str
     timestamp: datetime | None = None
@@ -166,6 +195,8 @@ class OutputChunk:
 
 @dataclass(frozen=True, slots=True)
 class CommandResult:
+    """Final result of a completed command."""
+
     exit_code: int
     stdout: str = ""
     stderr: str = ""
@@ -174,6 +205,8 @@ class CommandResult:
 
 @dataclass(frozen=True, slots=True)
 class PtySize:
+    """Terminal dimensions for PTY sessions."""
+
     rows: int = 24
     cols: int = 80
 
@@ -184,21 +217,28 @@ class PtySize:
 
 @dataclass(frozen=True, slots=True)
 class EnvdHealth:
+    """Health info of the sandbox-local envd service."""
+
     envd_version: str
 
 
 @dataclass(frozen=True, slots=True)
 class OomKill:
+    """One guest-kernel OOM kill event."""
+
     seq: int
     process: str
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> OomKill:
+        """Parses an envd OOM kill entry."""
         return cls(seq=_integer(_pick(value, "seq")), process=str(_pick(value, "process")))
 
 
 @dataclass(frozen=True, slots=True)
 class EnvdMetrics:
+    """CPU, memory and disk usage of the sandbox, as reported by envd."""
+
     timestamp: datetime
     cpu_count: int
     cpu_used_pct: float
@@ -215,6 +255,7 @@ class EnvdMetrics:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> EnvdMetrics:
+        """Parses an envd ``/metrics`` payload."""
         timestamp = parse_optional_datetime(_pick(value, "ts"))
         if timestamp is None:
             raise ProtocolError("EnvD metrics response field is missing: ts")
@@ -245,6 +286,8 @@ class EnvdMetrics:
 
 @dataclass(frozen=True, slots=True)
 class FileInfo:
+    """Metadata of a file or directory in the sandbox."""
+
     name: str
     path: str
     type: FileType
@@ -258,6 +301,7 @@ class FileInfo:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> FileInfo:
+        """Parses a filesystem entry; raises on unknown file types."""
         file_type = {
             "FILE_TYPE_FILE": FileType.FILE,
             "FILE_TYPE_DIRECTORY": FileType.DIRECTORY,
@@ -283,6 +327,8 @@ class FileInfo:
 
 @dataclass(frozen=True, slots=True)
 class FileWatchEvent:
+    """One change event from :meth:`Filesystem.watch`."""
+
     name: str
     type: str
     path: str | None = None
@@ -290,6 +336,7 @@ class FileWatchEvent:
 
     @classmethod
     def from_wire(cls, value: Mapping[str, Any]) -> FileWatchEvent:
+        """Parses a filesystem watch event."""
         raw_entry = value.get("entry")
         return cls(
             name=str(value.get("name", "")),
@@ -304,12 +351,16 @@ T = TypeVar("T")
 
 @dataclass(frozen=True, slots=True)
 class Page(Generic[T]):
+    """A paginated list result with the server-provided continuation token."""
+
     items: tuple[T, ...]
     next_token: str | None = None
     total: int | None = None
 
 
 def parse_optional_datetime(value: object) -> datetime | None:
+    """Parses a timestamp (ISO text, epoch seconds or datetime) to UTC-aware
+    :class:`datetime`; returns ``None`` for empty input."""
     if value is None or value == "":
         return None
     if isinstance(value, datetime):

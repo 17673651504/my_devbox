@@ -1,3 +1,10 @@
+"""Interactive terminal (PTY) sessions inside a sandbox.
+
+Exposed as :attr:`Sandbox.pty` / :attr:`AsyncSandbox.pty`; input goes through
+:meth:`CommandHandle.send_stdin`, output arrives via the handle's event
+stream.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping
@@ -28,7 +35,10 @@ class Pty:
         cwd: str | None = None,
         user: str | None = None,
     ) -> CommandHandle:
-        """Start an interactive process and return its process handle."""
+        """Start an interactive process and return its process handle.
+
+        The first event of the handle's stream carries the process PID.
+        """
         size = size or PtySize()
         environment = {"TERM": "xterm-256color", **dict(envs or {})}
         process: dict[str, object] = {
@@ -87,6 +97,10 @@ class AsyncPty:
         cwd: str | None = None,
         user: str | None = None,
     ) -> AsyncCommandHandle:
+        """Start an interactive process and return its process handle.
+
+        The first event of the handle's stream carries the process PID.
+        """
         size = size or PtySize()
         environment = {"TERM": "xterm-256color", **dict(envs or {})}
         process: dict[str, object] = {
@@ -107,6 +121,7 @@ class AsyncPty:
         *,
         timeout: float | None = None,
     ) -> AsyncCommandHandle:
+        """Reconnect to an interactive process by process ID."""
         return AsyncCommandHandle(
             pid,
             self._commands,
@@ -116,6 +131,7 @@ class AsyncPty:
         )
 
     async def resize(self, pid: int, size: PtySize) -> None:
+        """Change the terminal dimensions for an interactive process."""
         transport = await self._transport()
         await transport.connect_unary(
             "/process.Process/Update",

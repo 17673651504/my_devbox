@@ -1,8 +1,10 @@
 import type { Dispatcher } from "undici";
 import { ConfigurationError } from "./errors.js";
 
+/** Default DevBox Manager API endpoint. */
 export const DEFAULT_API_URL = "https://devbox.developer.myhuaweicloud.com";
 
+/** User-supplied client options; all fields are optional. */
 export interface DevBoxOptions {
   apiKey?: string;
   apiUrl?: string;
@@ -12,6 +14,7 @@ export interface DevBoxOptions {
   dispatcher?: Dispatcher;
 }
 
+/** Fully resolved client configuration; every field is populated. */
 export interface ConnectionConfig {
   apiKey: string;
   apiUrl: string;
@@ -22,6 +25,12 @@ export interface ConnectionConfig {
   dispatcher?: Dispatcher;
 }
 
+/**
+ * Resolves options into a {@link ConnectionConfig}: fills defaults, reads the
+ * `DEVBOX_API_KEY` / `E2B_API_KEY` / `DEVBOX_API_URL` / `E2B_API_URL` /
+ * `DEVBOX_GATEWAY_URL` environment variables and validates the URLs.
+ * Throws {@link ConfigurationError} when no API key is available.
+ */
 export function resolveConfig(options: DevBoxOptions = {}): ConnectionConfig {
   const apiKey = (
     options.apiKey ??

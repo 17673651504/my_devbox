@@ -1,3 +1,5 @@
+"""Connection settings and URL resolution for the DevBox Python SDK."""
+
 from __future__ import annotations
 
 import os
@@ -12,6 +14,12 @@ DEFAULT_API_URL = "https://devbox.developer.myhuaweicloud.com"
 
 
 def gateway_verify_tls() -> bool:
+    """Reports whether gateway TLS certificates should be verified.
+
+    Controlled by the ``DEVBOX_GATEWAY_SKIP_TLS_VERIFY`` environment
+    variable; disabling verification emits a :class:`RuntimeWarning` because
+    the connect token and sandbox data become interceptable.
+    """
     skip = os.getenv("DEVBOX_GATEWAY_SKIP_TLS_VERIFY", "").strip().lower()
     if skip in {"true", "1", "yes", "on"}:
         warnings.warn(
@@ -45,6 +53,12 @@ class ConnectionConfig:
         request_timeout: float | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> ConnectionConfig:
+        """Fills defaults from the ``DEVBOX_API_KEY`` / ``E2B_API_KEY`` /
+        ``DEVBOX_API_URL`` / ``E2B_API_URL`` / ``DEVBOX_GATEWAY_URL``
+        environment variables and validates the URLs.
+
+        Raises :class:`ConfigurationError` when no API key is available.
+        """
         resolved_key = (
             api_key or os.getenv("DEVBOX_API_KEY") or os.getenv("E2B_API_KEY") or ""
         ).strip()

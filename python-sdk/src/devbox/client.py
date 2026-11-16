@@ -1,3 +1,10 @@
+"""Client entry points for the DevBox Python SDK.
+
+Both clients resolve the API key from the ``api_key`` argument or the
+``DEVBOX_API_KEY`` / ``E2B_API_KEY`` environment variables, and expose the
+``sandboxes`` and ``templates`` namespaces.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -49,6 +56,7 @@ class DevBox:
         self.templates = Templates(self._transport)
 
     def close(self) -> None:
+        """Closes the shared control-plane transport and idle connections."""
         self._transport.close()
 
     def __enter__(self) -> DevBox:
@@ -64,7 +72,10 @@ class DevBox:
 
 
 class AsyncDevBox:
-    """Asynchronous counterpart of :class:`DevBox`."""
+    """Asynchronous counterpart of :class:`DevBox`.
+
+    Most applications can start with ``await AsyncSandbox.create()`` instead.
+    """
 
     def __init__(
         self,
@@ -98,6 +109,7 @@ class AsyncDevBox:
         self.templates = AsyncTemplates(self._transport)
 
     async def close(self) -> None:
+        """Closes the shared control-plane transport and idle connections."""
         await self._transport.close()
 
     async def __aenter__(self) -> AsyncDevBox:

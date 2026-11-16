@@ -7,14 +7,21 @@ import { type FileInfo, type FileWatchEvent, parseFileInfo } from "./models.js";
 const FILESYSTEM = "/filesystem.Filesystem";
 type TransportProvider = () => Promise<Transport>;
 
+/** Options for {@link Filesystem.write}. */
 export interface WriteFileOptions {
   encoding?: BufferEncoding;
 }
 
+/** Options for {@link Filesystem.list}. */
 export interface ListFilesOptions {
   depth?: number;
 }
 
+/**
+ * File operations inside the sandbox: read/write files, list directories,
+ * watch changes and upload/download. Paths must be absolute. Accessed via
+ * {@link Sandbox.files}.
+ */
 export class Filesystem {
   readonly #transport: TransportProvider;
 
@@ -22,16 +29,19 @@ export class Filesystem {
     this.#transport = transport;
   }
 
+  /** Reads a file as raw bytes. */
   async readBytes(path: string): Promise<Uint8Array> {
     return (await this.#transport()).requestBytes("GET", "/files", {
       params: { path: sandboxPath(path) },
     });
   }
 
+  /** Reads a file and decodes it with the given encoding (default utf8). */
   async read(path: string, encoding: BufferEncoding = "utf8"): Promise<string> {
     return Buffer.from(await this.readBytes(path)).toString(encoding);
   }
 
+  /** Writes a file; string data is encoded with `options.encoding` (default utf8). */
   async write(
     path: string,
     data: string | Uint8Array,
@@ -46,6 +56,7 @@ export class Filesystem {
     return parseFileInfo(firstItem(payload));
   }
 
+  /** Writes multiple files in one call; keys are sandbox paths, values their content. */
   async writeBatch(
     files: Readonly<Record<string, string | Uint8Array>>,
     options: WriteFileOptions = {},
@@ -56,6 +67,7 @@ export class Filesystem {
     return result;
   }
 
+  /** Lists a directory; `options.depth` controls recursion (default 1). */
   async list(path: string, options: ListFilesOptions = {}): Promise<FileInfo[]> {
     const depth = options.depth ?? 1;
     if (!Number.isInteger(depth) || depth < 1)
@@ -67,6 +79,7 @@ export class Filesystem {
     return items(payload, "entries").map(parseFileInfo);
   }
 
+  /** Returns file/directory metadata for a single path. */
   async stat(path: string): Promise<FileInfo> {
     const payload = objectValue(
       await (await this.#transport()).connectUnary(`${FILESYSTEM}/Stat`, {
@@ -78,6 +91,7 @@ export class Filesystem {
     return parseFileInfo(objectValue(payload.entry));
   }
 
+  /** Reports whether a path exists (false instead of throwing on 404). */
   async exists(path: string): Promise<boolean> {
     try {
       await this.stat(path);
@@ -88,12 +102,14 @@ export class Filesystem {
     }
   }
 
+  /** Creates a directory (and parents) at the given path. */
   async makeDir(path: string): Promise<void> {
     await (await this.#transport()).connectUnary(`${FILESYSTEM}/MakeDir`, {
       path: sandboxPath(path),
     });
   }
 
+  /** Moves (renames) a file or directory. */
   async move(source: string, destination: string): Promise<void> {
     await (await this.#transport()).connectUnary(`${FILESYSTEM}/Move`, {
       source: sandboxPath(source),
@@ -101,21 +117,30 @@ export class Filesystem {
     });
   }
 
+  /** Removes a file or directory. */
   async remove(path: string): Promise<void> {
     await (await this.#transport()).connectUnary(`${FILESYSTEM}/Remove`, {
       path: sandboxPath(path),
     });
   }
 
+  /** Uploads a local file into the sandbox. */
   async upload(localPath: string, remotePath: string): Promise<FileInfo> {
     return this.write(remotePath, await readFile(localPath));
   }
 
+  /** Downloads a sandbox file to a local path; returns the local path. */
   async download(remotePath: string, localPath: string): Promise<string> {
     await writeFile(localPath, await this.readBytes(remotePath));
     return localPath;
   }
 
+  /**
+   * Watches a directory and yields change events. `options.recursive`
+   * includes subdirectories; `options.includeEntry` toggles the resolved
+   * `entry` metadata on each event. The stream ends when the generator is
+   * closed (return/break).
+   */
   async *watch(
     path: string,
     options: { recursive?: boolean; includeEntry?: boolean } = {},

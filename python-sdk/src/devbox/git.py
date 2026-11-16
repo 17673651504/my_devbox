@@ -1,3 +1,8 @@
+"""Git operations executed inside a sandbox through the process API.
+
+Exposed as :attr:`Sandbox.git` / :attr:`AsyncSandbox.git`.
+"""
+
 from __future__ import annotations
 
 import shlex
@@ -10,6 +15,8 @@ from .models import CommandResult
 
 @dataclass(frozen=True, slots=True)
 class GitCredentials:
+    """Credentials passed to git via a sandbox-side credential helper."""
+
     username: str
     password: str = field(repr=False)
 
@@ -134,6 +141,7 @@ class AsyncGit:
         credentials: GitCredentials | None = None,
         timeout: float | None = 300,
     ) -> CommandResult:
+        """Clone a repository into the sandbox."""
         command = ["git", "clone"]
         if branch:
             command.extend(["--branch", branch])
@@ -145,11 +153,13 @@ class AsyncGit:
         return await self._run(command, credentials=credentials, timeout=timeout)
 
     async def status(self, repository: str) -> CommandResult:
+        """Return the short status of a sandbox repository."""
         return await self._run(_in(repository, "status", "--short", "--branch"))
 
     async def checkout(
         self, repository: str, reference: str, *, create: bool = False
     ) -> CommandResult:
+        """Check out a branch or reference, optionally creating it."""
         arguments = ["checkout"]
         if create:
             arguments.append("-b")
@@ -157,12 +167,14 @@ class AsyncGit:
         return await self._run(_in(repository, *arguments))
 
     async def add(self, repository: str, paths: str | Sequence[str] = ".") -> CommandResult:
+        """Stage one or more paths."""
         values = [paths] if isinstance(paths, str) else list(paths)
         if not values:
             raise ValueError("at least one git path is required")
         return await self._run(_in(repository, "add", "--", *values))
 
     async def commit(self, repository: str, message: str) -> CommandResult:
+        """Commit staged changes."""
         if not message.strip():
             raise ValueError("commit message must not be blank")
         return await self._run(_in(repository, "commit", "-m", message))
@@ -176,6 +188,7 @@ class AsyncGit:
         credentials: GitCredentials | None = None,
         timeout: float | None = 300,
     ) -> CommandResult:
+        """Pull changes from a remote repository."""
         command = _in(repository, "pull", remote)
         if branch:
             command.append(branch)
@@ -190,12 +203,14 @@ class AsyncGit:
         credentials: GitCredentials | None = None,
         timeout: float | None = 300,
     ) -> CommandResult:
+        """Push changes to a remote repository."""
         command = _in(repository, "push", remote)
         if branch:
             command.append(branch)
         return await self._run(command, credentials=credentials, timeout=timeout)
 
     async def set_config(self, repository: str, key: str, value: str) -> CommandResult:
+        """Set one repository-local Git configuration value."""
         return await self._run(_in(repository, "config", key, value))
 
     async def _run(
