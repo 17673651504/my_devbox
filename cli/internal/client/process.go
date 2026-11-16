@@ -156,8 +156,22 @@ func (p *ProcessClient) StartPTY(ctx context.Context, cfg *process.ProcessConfig
 	return p.rpc.Start(ctx, req)
 }
 
+// quietKey marks requests whose traffic must stay out of the debug log.
+type quietKey struct{}
+
+// quietContext marks ctx so the envd debug transport skips logging the
+// request and its response. Interactive PTY sessions deliver one SendInput
+// per keystroke (and a stream of resize events while a window is dragged);
+// logging each would flood the raw-mode terminal display and make the
+// session unusable under -v.
+func quietContext(ctx context.Context) context.Context {
+	return context.WithValue(ctx, quietKey{}, true)
+}
+
 // SendPtyInput writes bytes to the PTY of a running process.
 func (p *ProcessClient) SendPtyInput(ctx context.Context, pid uint32, data []byte) error {
+	// One request per keystroke: never log interactive session traffic.
+	ctx = quietContext(ctx)
 	_, err := p.rpc.SendInput(ctx, connect.NewRequest(&process.SendInputRequest{
 		Process: &process.ProcessSelector{
 			Selector: &process.ProcessSelector_Pid{Pid: pid},
@@ -171,6 +185,8 @@ func (p *ProcessClient) SendPtyInput(ctx context.Context, pid uint32, data []byt
 
 // UpdateSize resizes the PTY of a running process.
 func (p *ProcessClient) UpdateSize(ctx context.Context, pid uint32, cols, rows int) error {
+	// Window drags emit a stream of resize events: keep them out of the log.
+	ctx = quietContext(ctx)
 	_, err := p.rpc.Update(ctx, connect.NewRequest(&process.UpdateRequest{
 		Process: &process.ProcessSelector{
 			Selector: &process.ProcessSelector_Pid{Pid: pid},

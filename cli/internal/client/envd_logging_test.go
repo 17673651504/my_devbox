@@ -99,6 +99,42 @@ func TestEnvdLoggingTransportStreamsSuccessBodyUntouched(t *testing.T) {
 	}
 }
 
+func TestEnvdLoggingTransportSkipsQuietRequests(t *testing.T) {
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	transport := &envdLoggingTransport{base: http.DefaultTransport}
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/process.Process/SendInput",
+		strings.NewReader(`{"input":{"pty":"Zg=="}}`))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	// Mark the request the way SendPtyInput does (interactive PTY traffic).
+	req = req.WithContext(quietContext(req.Context()))
+	resp, err := transport.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("round trip: %v", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if string(body) != `{"ok":true}` {
+		t.Fatalf("quiet request body must reach the caller untouched, got %q", body)
+	}
+	if logged := buf.String(); logged != "" {
+		t.Fatalf("quiet requests must not be logged, got: %s", logged)
+	}
+}
+
 func TestBasicAuthUser(t *testing.T) {
 	cases := []struct {
 		name   string
