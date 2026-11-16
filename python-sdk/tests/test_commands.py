@@ -4,14 +4,28 @@ import base64
 import json
 from collections.abc import Callable, Generator, Iterator, Mapping
 from typing import Any, Literal, cast
+from unittest.mock import patch
 
 import httpx
 import pytest
 
-from devbox import CommandExitError, CommandResult, ConfigurationError, ProtocolError
+from devbox import (
+    CommandExitError, CommandResult, ConfigurationError, ProtocolError, RequestTimeoutError,
+)
 from devbox._transport import AsyncTransport, SyncTransport
 from devbox.commands import AsyncCommands, CommandHandle, Commands
 from devbox.pty import AsyncPty, Pty
+
+
+@pytest.mark.parametrize("elapsed, error", [(2, RequestTimeoutError), (0.1, ProtocolError)])
+def test_command_missing_exit_status_at_deadline(elapsed, error) -> None:
+    def events():
+        yield {"event": {}}
+
+    with patch("devbox.commands.time.monotonic", side_effect=[100, 100 + elapsed]):
+        handle = CommandHandle(1, Commands(lambda: None), events(), reconnect_timeout=1)
+        with pytest.raises(error):
+            handle.wait()
 
 
 @pytest.mark.parametrize("user", [None, "nobody"])

@@ -333,6 +333,10 @@ class Sandbox:
     def info(self) -> SandboxInfo:
         return self._info
 
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
+
     def get_info(self) -> SandboxInfo:
         """Fetch the latest sandbox state from the Manager."""
         self._info = SandboxInfo.from_wire(
@@ -603,6 +607,10 @@ class AsyncSandbox:
     @property
     def info(self) -> SandboxInfo:
         return self._info
+
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
 
     async def get_info(self) -> SandboxInfo:
         self._info = SandboxInfo.from_wire(
@@ -909,8 +917,8 @@ def _mapping(value: object) -> Mapping[str, Any]:
 
 
 def _checked_timeout(timeout: int) -> int:
-    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 86400:
-        raise ValueError("timeout must be an integer between 1 and 86400 seconds")
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 10 <= timeout <= 86400:
+        raise ValueError("timeout must be an integer between 10 and 86400 seconds")
     return timeout
 
 

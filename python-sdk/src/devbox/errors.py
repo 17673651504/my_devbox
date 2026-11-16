@@ -95,9 +95,10 @@ class CommandExitError(DevBoxError):
 
 def transport_error(error: Exception) -> Exception:
     if isinstance(error, httpx.TimeoutException):
-        return RequestTimeoutError("request timed out")
+        return RequestTimeoutError(f"request timed out ({type(error).__name__})")
     if isinstance(error, httpx.HTTPError):
-        return ServiceUnavailableError("unable to reach DevBox service")
+        detail = str(error.__cause__ or error)
+        return ServiceUnavailableError(f"DevBox transport failed ({type(error).__name__}): {detail}")
     return error
 
 

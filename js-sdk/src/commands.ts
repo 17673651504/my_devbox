@@ -174,7 +174,7 @@ export class Commands {
     const payload = objectValue(
       await (await this.#transport()).connectUnary(`${PROCESS}/List`, {}),
     );
-    const processes = payload.processes;
+    const processes = payload.processes ?? [];
     if (!Array.isArray(processes)) throw new ProtocolError("process response is invalid");
     return processes.map((item) => objectValue(item)).map(parseProcessInfo);
   }

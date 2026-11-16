@@ -3,11 +3,12 @@ from __future__ import annotations
 import base64
 import codecs
 import inspect
+import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Iterator, Mapping
 from typing import Any, Literal, overload
 
 from ._transport import AsyncTransport, SyncTransport
-from .errors import CommandExitError, ConfigurationError, ProtocolError
+from .errors import CommandExitError, ConfigurationError, ProtocolError, RequestTimeoutError
 from .models import CommandResult, OutputChunk, ProcessInfo, PtySize
 
 OutputHandler = Callable[[str], None]
@@ -16,6 +17,10 @@ SyncTransportProvider = Callable[[], SyncTransport]
 AsyncTransportProvider = Callable[[], Awaitable[AsyncTransport]]
 
 _PROCESS = "/process.Process"
+
+
+class _MissingExitStatus(ProtocolError):
+    pass
 
 
 class CommandHandle:
@@ -35,6 +40,7 @@ class CommandHandle:
         self._events = events
         self._input_stream = input_stream
         self._reconnect_timeout = reconnect_timeout
+        self._deadline = time.monotonic() + reconnect_timeout if reconnect_timeout else None
         self._result: CommandResult | None = None
 
     def wait(
@@ -54,6 +60,10 @@ class CommandHandle:
                 self._result = self._commands._collect_events(
                     events, self.pid, on_stdout, on_stderr
                 )
+            except _MissingExitStatus as error:
+                if self._deadline is not None and time.monotonic() >= self._deadline:
+                    raise RequestTimeoutError("command timed out") from error
+                raise
             finally:
                 events.close()
         if check and self._result.exit_code != 0:
@@ -195,7 +205,9 @@ class Commands:
         request = dict(body)
         if pty:
             request["pty"] = {"size": {"rows": pty.rows, "cols": pty.cols}}
-        events = self._transport().connect_stream(
+        transport = self._transport()
+        started = time.monotonic()
+        events = transport.connect_stream(
             f"{_PROCESS}/Start",
             request,
             timeout=timeout,
@@ -206,13 +218,15 @@ class Commands:
         except BaseException:
             events.close()
             raise
-        return CommandHandle(
+        handle = CommandHandle(
             pid,
             self,
             events,
             input_stream=input_stream,
             reconnect_timeout=timeout,
         )
+        handle._deadline = started + timeout if timeout else None
+        return handle
 
     def _connect_events(
         self, pid: int, timeout: float | None
@@ -272,6 +286,7 @@ class AsyncCommandHandle:
         self._events = events
         self._input_stream = input_stream
         self._reconnect_timeout = reconnect_timeout
+        self._deadline = time.monotonic() + reconnect_timeout if reconnect_timeout else None
         self._result: CommandResult | None = None
 
     async def wait(
@@ -290,6 +305,10 @@ class AsyncCommandHandle:
                 self._result = await self._commands._collect_events(
                     events, self.pid, on_stdout, on_stderr
                 )
+            except _MissingExitStatus as error:
+                if self._deadline is not None and time.monotonic() >= self._deadline:
+                    raise RequestTimeoutError("command timed out") from error
+                raise
             finally:
                 await events.aclose()
         if check and self._result.exit_code != 0:
@@ -427,6 +446,7 @@ class AsyncCommands:
         if pty:
             request["pty"] = {"size": {"rows": pty.rows, "cols": pty.cols}}
         transport = await self._transport()
+        started = time.monotonic()
         events = transport.connect_stream(
             f"{_PROCESS}/Start",
             request,
@@ -438,13 +458,15 @@ class AsyncCommands:
         except BaseException:
             await events.aclose()
             raise
-        return AsyncCommandHandle(
+        handle = AsyncCommandHandle(
             pid,
             self,
             events,
             input_stream=input_stream,
             reconnect_timeout=timeout,
         )
+        handle._deadline = started + timeout if timeout else None
+        return handle
 
     async def _connect_events(
         self, pid: int, timeout: float | None
@@ -531,7 +553,7 @@ class _OutputCollector:
     def result(self) -> CommandResult:
         self._flush()
         if self._exit_code is None:
-            raise ProtocolError("command stream ended without an exit status")
+            raise _MissingExitStatus("command stream ended without an exit status")
         return CommandResult(
             exit_code=self._exit_code,
             stdout="".join(self._stdout),

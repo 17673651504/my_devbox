@@ -83,9 +83,13 @@ try {
 
 重连不会回放断开期间的输出。重要结果应写入沙箱文件，再通过文件接口读取。列出现有进程使用 `sandbox.commands.list()`；结束进程使用句柄的 `send_signal("SIGTERM")`，JS 对应 `sendSignal("SIGTERM")`。
 
+没有可列出的进程时，Python 返回空元组 `()`，JavaScript 返回空数组 `[]`。
+
 ## 非零退出码
 
 非零退出码默认抛出 `CommandExitError`。需要自行判断时，Python 传入 `check=False`，JS 传入 `{ check: false }`。
+
+Python 命令到达超时期限且输出流结束却未返回退出状态时，抛出 `RequestTimeoutError`；如果输出流提前结束且没有退出状态，则抛出 `ProtocolError`。命令超时与沙箱存活时间独立。
 
 ## 指定执行用户
 

@@ -209,6 +209,11 @@ export class Sandbox {
     return this.#info;
   }
 
+  /** EnvD endpoint used by this handle, including any configured gateway override. */
+  get envdUrl(): string {
+    return gatewayUrl(this.#connection, this.#context.gatewayUrl);
+  }
+
   async getInfo(): Promise<SandboxInfo> {
     this.#info = parseSandboxInfo(
       objectValue(await this.#control.request("GET", `/sandboxes/${identifier(this.sandboxId)}`)),
