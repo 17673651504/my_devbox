@@ -39,19 +39,8 @@ func TestStartLoginWithCallback(t *testing.T) {
 		t.Fatalf("login URL missing callback port: %s", session.URL)
 	}
 
-	callback := "http://127.0.0.1:" + port + "/"
-	body := strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
-	req, err := http.NewRequest(http.MethodPost, callback, body)
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {
@@ -71,20 +60,10 @@ func TestStartLoginRejectsMissingKey(t *testing.T) {
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
 
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
-		strings.NewReader(`{"error_code":"E1"}`))
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing key, got %d", resp.StatusCode)
+	status := postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"error_code":"E1"}`)
+	if status != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing key, got %d", status)
 	}
 }
 
@@ -148,18 +127,8 @@ func TestStartLoginWithNestedResult(t *testing.T) {
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
-	body := strings.NewReader(`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/", body)
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {
@@ -180,18 +149,8 @@ func TestCallbackDebugLogging(t *testing.T) {
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
-		strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`))
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {
