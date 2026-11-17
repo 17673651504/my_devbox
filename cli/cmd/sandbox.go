@@ -107,7 +107,13 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxCreateCwd, sandboxCreateUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
+		Sandbox: sb,
+		Cwd:     sandboxCreateCwd,
+		User:    sandboxCreateUser,
+		Envs:    envMap,
+		Probe:   c.GetSandbox,
+	})
 }
 
 // sandboxListCmd's flag bound variables.
@@ -365,6 +371,19 @@ var sandboxResumeCmd = &cobra.Command{
 }
 
 // runSandboxResume resumes one paused sandbox; an explicit -t overrides the TTL.
+// translateTunnelError maps the Manager's HTTP 409 tunnel error codes on
+// connect/resume (see the sandboxes API "tunnel errors" section) to
+// actionable localized messages; any other error passes through unchanged.
+func translateTunnelError(err error, sandboxID string) error {
+	switch client.APIErrorCode(err) {
+	case client.TunnelExpiredCode:
+		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.TunnelExpired), sandboxID)
+	case client.TunnelValidityInsufficientCode:
+		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.TunnelValidityInsufficient))
+	}
+	return err
+}
+
 func runSandboxResume(cmd *cobra.Command, args []string) error {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return err
@@ -383,7 +402,7 @@ func runSandboxResume(cmd *cobra.Command, args []string) error {
 	}
 	_, err = c.ResumeSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
-		return err
+		return translateTunnelError(err, args[0])
 	}
 	// Aligned with e2b: single-line output, no fields.
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.Resumed)+"\n", args[0])
@@ -430,13 +449,19 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	}
 	sb, err := c.ConnectSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
-		return err
+		return translateTunnelError(err, args[0])
 	}
 	envMap, err := helpers.ParseKV(sandboxConnectEnv)
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxConnectCwd, sandboxConnectUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
+		Sandbox: sb,
+		Cwd:     sandboxConnectCwd,
+		User:    sandboxConnectUser,
+		Envs:    envMap,
+		Probe:   c.GetSandbox,
+	})
 }
 
 // sandboxTimeoutCmd's flag bound variables.
@@ -561,7 +586,12 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
 	}
-	pc, err := client.NewProcessClient(*sb.Domain, args[0], *sb.ConnectToken, sandboxExecUser, nil)
+	pc, err := client.NewProcessClient(client.SandboxConnection{
+		Domain:       *sb.Domain,
+		SandboxID:    args[0],
+		ConnectToken: *sb.ConnectToken,
+		User:         sandboxExecUser,
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -576,10 +606,17 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if sandboxExecBackground {
-		return helpers.ExecBackground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
+	execOpts := helpers.ExecOptions{
+		Stdout:    cmd.OutOrStdout(),
+		Stderr:    cmd.ErrOrStderr(),
+		Piped:     piped,
+		SandboxID: args[0],
+		Probe:     c.GetSandbox,
 	}
-	return helpers.ExecForeground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
+	if sandboxExecBackground {
+		return helpers.ExecBackground(cmd.Context(), pc, stream, execOpts)
+	}
+	return helpers.ExecForeground(cmd.Context(), pc, stream, execOpts)
 }
 
 func init() {

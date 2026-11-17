@@ -6,8 +6,10 @@ package helpers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
@@ -179,31 +181,91 @@ func MissingDomainError() error {
 	return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingDomain))
 }
 
+// TerminalSessionOptions bundles the parameters of one interactive terminal
+// session: the sandbox connection info plus the per-session working directory,
+// user and environment. A nil Probe skips stream-failure arbitration (see
+// translateSessionError).
+type TerminalSessionOptions struct {
+	Sandbox *api.Sandbox
+	Cwd     string
+	User    string
+	Envs    map[string]string
+	Probe   SandboxProbe
+}
+
 // RunTerminalSession validates the connection info from the sandbox response
 // and opens the interactive terminal, printing the connecting/closing notices
 // to msgs. The raw session I/O flows through in/out (typically os.Stdin and
-// os.Stdout). A non-empty user opens the terminal as that sandbox user.
-func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, sb *api.Sandbox, cwd, user string, envs map[string]string) error {
-	if sb.Domain == nil || *sb.Domain == "" {
+// os.Stdout). A non-empty opts.User opens the terminal as that sandbox user.
+// When the session stream fails mid-flight, opts.Probe arbitrates the sandbox
+// state so a TTL-expired/destroyed sandbox yields a friendly notice instead of
+// a raw connect protocol error (mirrors e2b's health-check arbitration).
+func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, opts TerminalSessionOptions) error {
+	sb := opts.Sandbox
+	if sb == nil || sb.Domain == nil || *sb.Domain == "" {
 		return MissingDomainError()
 	}
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
 	}
-	pc, err := client.NewProcessClient(*sb.Domain, sb.SandboxID, *sb.ConnectToken, user, nil)
+	pc, err := client.NewProcessClient(client.SandboxConnection{
+		Domain:       *sb.Domain,
+		SandboxID:    sb.SandboxID,
+		ConnectToken: *sb.ConnectToken,
+		User:         opts.User,
+	}, nil)
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.ConnectingTo)+"\n", sb.SandboxID)
-	end, err := terminal.New(pc, in, out, cwd, envs).Run(ctx)
+	end, err := terminal.New(pc, in, out, opts.Cwd, opts.Envs).Run(ctx)
 	if err != nil {
-		return err
+		return translateSessionError(ctx, msgs, sb.SandboxID, err, opts.Probe)
 	}
 	if end != nil && end.ExitCode != 0 {
 		_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.RemoteShellExited)+"\n", end.ExitCode, end.Status)
 	}
 	_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.ClosingConnection)+"\n", sb.SandboxID)
 	return nil
+}
+
+// SandboxProbe queries the Manager for a sandbox's current state by ID. It is
+// used to arbitrate transport-level stream failures, mirroring e2b's SDK which
+// follows a failed envd request with a health probe: whether the sandbox is
+// gone can only be told by asking the Manager.
+type SandboxProbe func(ctx context.Context, sandboxID string) (*api.Sandbox, error)
+
+// translateSessionError arbitrates a failed terminal/exec session. When the
+// sandbox is destroyed mid-session (TTL expiry or a kill), the gateway cuts
+// the stream and the connect client surfaces a meaningless transport error
+// (e.g. "protocol error: promised ... bytes in enveloped message"). Probing
+// the Manager translates that into a friendly notice and a clean session end:
+// NotFound means the sandbox was destroyed, a paused state means it was
+// auto-paused on timeout; any other outcome (sandbox still running, probe
+// failed) keeps the original error. A normal remote exit (*ExitCodeError) is
+// never translated.
+func translateSessionError(ctx context.Context, msgs io.Writer, sandboxID string, err error, probe SandboxProbe) error {
+	if err == nil || probe == nil {
+		return err
+	}
+	var exitErr *ExitCodeError
+	if errors.As(err, &exitErr) {
+		return err
+	}
+	sb, probeErr := probe(ctx, sandboxID)
+	if probeErr != nil {
+		var apiErr *client.APIError
+		if errors.As(probeErr, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+			_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.SessionEndedSandboxGone)+"\n", sandboxID)
+			return nil
+		}
+		return err
+	}
+	if sb != nil && sb.State == api.Paused {
+		_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.SessionEndedSandboxPaused)+"\n", sandboxID)
+		return nil
+	}
+	return err
 }
 
 // ExitCodeError carries a process exit code up to main so that remote exit
@@ -218,9 +280,21 @@ func (e *ExitCodeError) Error() string {
 	return fmt.Sprintf("exit status %d", e.ExitCode)
 }
 
+// ExecOptions bundles the I/O and arbitration parameters of one exec session:
+// where remote output goes, whether stdin is piped, and how to arbitrate a
+// mid-flight stream failure (see translateSessionError).
+type ExecOptions struct {
+	Stdout    io.Writer
+	Stderr    io.Writer
+	Piped     bool
+	SandboxID string
+	Probe     SandboxProbe
+}
+
 // ExecForeground runs in the foreground: forwards the remote stdout/stderr locally, waits for the process to exit
-// and returns the remote exit code as the local exit code.
-func ExecForeground(ctx context.Context, stdout, stderr io.Writer, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
+// and returns the remote exit code as the local exit code. A mid-flight stream
+// failure is arbitrated via opts.Probe (see translateSessionError).
+func ExecForeground(ctx context.Context, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], opts ExecOptions) error {
 	defer func() { _ = stream.Close() }()
 
 	var pid uint32
@@ -237,29 +311,30 @@ func ExecForeground(ctx context.Context, stdout, stderr io.Writer, pc *client.Pr
 			if !started {
 				started = true
 				startSignalForwarder(ctx, pc, pid)
-				if piped {
+				if opts.Piped {
 					go streamLocalStdin(ctx, pc, pid)
 				}
 			}
 		case *process.ProcessEvent_Data:
-			writeProcessEventOutput(e.Data, stdout, stderr)
+			writeProcessEventOutput(e.Data, opts.Stdout, opts.Stderr)
 		case *process.ProcessEvent_End:
 			exitCode = e.End.GetExitCode()
 			if e.End.GetError() != "" {
-				_, _ = fmt.Fprintln(stderr, e.End.GetError())
+				_, _ = fmt.Fprintln(opts.Stderr, e.End.GetError())
 			}
 		case *process.ProcessEvent_Keepalive:
 		}
 	}
 	if err := stream.Err(); err != nil {
-		return err
+		return translateSessionError(ctx, opts.Stderr, opts.SandboxID, err, opts.Probe)
 	}
 	return &ExitCodeError{ExitCode: int(exitCode)}
 }
 
 // ExecBackground runs in the background: waits for the first start event to get the PID, forwards piped input (if any),
-// prints the PID and exits immediately; the remote process keeps running.
-func ExecBackground(ctx context.Context, _ io.Writer, stderr io.Writer, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], piped bool) error {
+// prints the PID and exits immediately; the remote process keeps running. A mid-flight
+// stream failure is arbitrated via opts.Probe (see translateSessionError).
+func ExecBackground(ctx context.Context, pc *client.ProcessClient, stream *connect.ServerStreamForClient[process.StartResponse], opts ExecOptions) error {
 	var pid uint32
 	for stream.Receive() {
 		body := stream.Msg().GetEvent()
@@ -272,16 +347,16 @@ func ExecBackground(ctx context.Context, _ io.Writer, stderr io.Writer, pc *clie
 		}
 	}
 	if err := stream.Err(); err != nil {
-		return err
+		return translateSessionError(ctx, opts.Stderr, opts.SandboxID, err, opts.Probe)
 	}
 	if pid == 0 {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.NoProcessID))
 	}
-	if piped {
+	if opts.Piped {
 		streamLocalStdin(ctx, pc, pid)
 	}
 	_ = stream.Close()
-	_, _ = fmt.Fprintln(stderr, pid)
+	_, _ = fmt.Fprintln(opts.Stderr, pid)
 	return nil
 }
 

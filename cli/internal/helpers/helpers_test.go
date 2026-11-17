@@ -1,10 +1,57 @@
 package helpers
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 )
+
+// TestTranslateSessionError verifies the arbitration of a failed session
+// stream: a destroyed/paused sandbox is translated into a friendly notice and
+// a clean end, while any other case keeps the original transport error
+// (mirrors e2b's health-check arbitration).
+func TestTranslateSessionError(t *testing.T) {
+	transportErr := fmt.Errorf("internal: protocol error: promised 1633951847 bytes: unexpected EOF")
+	probe := func(sb *api.Sandbox, err error) SandboxProbe {
+		return func(context.Context, string) (*api.Sandbox, error) { return sb, err }
+	}
+
+	cases := []struct {
+		name       string
+		err        error
+		probe      SandboxProbe
+		wantNil    bool
+		wantNotice bool // msgs must contain the sandbox id (both languages interpolate %s)
+	}{
+		{"normal exit code is never translated", &ExitCodeError{ExitCode: 2}, probe(nil, nil), false, false},
+		{"destroyed sandbox gets a notice", transportErr, probe(nil, &client.APIError{StatusCode: http.StatusNotFound}), true, true},
+		{"paused sandbox gets a notice", transportErr, probe(&api.Sandbox{State: api.Paused}, nil), true, true},
+		{"running sandbox keeps the error", transportErr, probe(&api.Sandbox{State: api.Running}, nil), false, false},
+		{"failed probe keeps the error", transportErr, probe(nil, fmt.Errorf("dial tcp: timeout")), false, false},
+		{"nil probe keeps the error", transportErr, nil, false, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var msgs bytes.Buffer
+			got := translateSessionError(context.Background(), &msgs, "sbx-1", tc.err, tc.probe)
+			if tc.wantNil && got != nil {
+				t.Fatalf("translateSessionError() = %v, want nil", got)
+			}
+			if !tc.wantNil && got == nil {
+				t.Fatal("translateSessionError() = nil, want the original error")
+			}
+			if tc.wantNotice && !strings.Contains(msgs.String(), "sbx-1") {
+				t.Errorf("notice should carry the sandbox id, got: %q", msgs.String())
+			}
+		})
+	}
+}
 
 func TestSandboxJSONRedactsSensitiveFields(t *testing.T) {
 	token := "secret-token"

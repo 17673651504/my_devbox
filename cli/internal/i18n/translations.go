@@ -371,6 +371,22 @@ func init() {
 				ZH: "沙箱内以指定用户运行命令或打开终端",
 				EN: "run the command or open the terminal as the specified user inside the sandbox",
 			},
+			SessionEndedSandboxGone: Message{
+				ZH: "沙箱 %s 已销毁（TTL 到期或被终止），连接已断开",
+				EN: "sandbox %s was destroyed (TTL reached or the sandbox was killed); the connection has been closed",
+			},
+			SessionEndedSandboxPaused: Message{
+				ZH: "沙箱 %s 已暂停（超时自动暂停），连接已断开；可 resume 恢复后重连",
+				EN: "sandbox %s was paused (auto-paused on timeout); the connection has been closed - resume it and reconnect",
+			},
+			TunnelExpired: Message{
+				ZH: "沙箱 %s 的原隧道已过期，重复连接不会恢复原地址；请联系支持，或销毁后重建沙箱",
+				EN: "the tunnel for sandbox %s has expired - reconnecting will not restore the original address; contact support or recreate the sandbox",
+			},
+			TunnelValidityInsufficient: Message{
+				ZH: "隧道剩余有效期不足以覆盖请求的运行时长（含 5 分钟余量）；可缩短 --timeout 后重试",
+				EN: "the tunnel's remaining validity cannot cover the requested runtime plus a 5-minute margin; try a shorter --timeout and retry",
+			},
 			FlagState: Message{
 				ZH: "按状态过滤: running 或 paused（可重复）",
 				EN: "filter by state: running or paused (repeatable)",
