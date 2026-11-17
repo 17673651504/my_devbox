@@ -120,6 +120,15 @@ type SandboxMessages struct {
 	FlagDuration        Message
 	FlagBackground      Message
 	FlagUser            Message
+
+	// Session-interruption arbitration: friendly notices shown when the
+	// streaming connection drops because the sandbox was destroyed or paused.
+	SessionEndedSandboxGone   Message
+	SessionEndedSandboxPaused Message
+
+	// Tunnel errors returned by the Manager with HTTP 409 on connect/resume.
+	TunnelExpired              Message
+	TunnelValidityInsufficient Message
 }
 
 type TemplateMessages struct {
