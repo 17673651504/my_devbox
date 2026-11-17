@@ -202,8 +202,11 @@ func TestCallbackDebugLogging(t *testing.T) {
 	_ = resp.Body.Close()
 
 	cred, ui, err := session.Wait(context.Background())
-	if err != nil || cred.APIKey != "callback-key-42" {
-		t.Fatalf("wait: key=%q err=%v", cred.APIKey, err)
+	if err != nil {
+		t.Fatalf("wait: %v", err)
+	}
+	if cred.APIKey != "callback-key-42" {
+		t.Fatalf("wait: key=%q, want callback-key-42", cred.APIKey)
 	}
 	if ui == nil || ui.UserName != "tester" {
 		t.Fatalf("expected user info from the callback, got %+v", ui)

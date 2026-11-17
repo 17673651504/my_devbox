@@ -138,7 +138,7 @@ var sandboxListCmd = &cobra.Command{
 
 // runSandboxList validates the filters, queries the sandboxes and prints them
 // as a table or JSON.
-func runSandboxList(cmd *cobra.Command, args []string) error {
+func runSandboxList(cmd *cobra.Command, _ []string) error {
 	c, err := newClient()
 	if err != nil {
 		return err
