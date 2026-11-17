@@ -117,6 +117,17 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
 
 运行中返回 HTTP 200，执行恢复后返回 HTTP 201，响应均为[沙箱对象](#sandbox)。该接口准备访问入口，实际数据连接由调用者向 `domain` 发起。状态暂不允许操作时返回 409。
 
+### 隧道错误 {#tunnel-errors}
+
+连接或恢复时，如果服务无法继续使用原隧道，可能返回：
+
+| HTTP 状态 | `error_code` | 处理方式 |
+| --- | --- | --- |
+| 409 | `tunnel_expired` | 原隧道已过期。重复连接不会恢复原地址，请联系支持。 |
+| 409 | `tunnel_validity_insufficient` | 隧道尚可用的时间不足以覆盖请求的运行时长和 5 分钟余量。可尝试缩短请求时长。 |
+
+这两种错误都不会自动更换隧道。Python 和 JS SDK 均将 HTTP 409 表示为 `ConflictError`，可读取异常的 `code` 区分原因。
+
 ## 暂停沙箱 {#pause}
 
 `POST /sandboxes/{sandboxID}/pause`
@@ -148,6 +159,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/resume" \
 成功返回 HTTP 201 和[沙箱对象](#sandbox)，使用其中最新的访问凭证。恢复后的运行期限重新计算，不承接暂停前剩余秒数；快照中的文件及未结束进程继续保留。当前恢复依赖原节点可用。
 
 运行中的沙箱调用 resume 返回 409；希望兼容运行和暂停两种状态时使用 [connect](#connect)。
+
+恢复也可能返回上述[隧道错误](#tunnel-errors)；这时暂停记录保留。
 
 ## 重设存活时间 {#timeout}
 
