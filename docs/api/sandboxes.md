@@ -117,6 +117,17 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
 
 运行中返回 HTTP 200，执行恢复后返回 HTTP 201，响应均为[沙箱对象](#sandbox)。该接口准备访问入口，实际数据连接由调用者向 `domain` 发起。状态暂不允许操作时返回 409。
 
+### 隧道错误 {#tunnel-errors}
+
+连接或恢复时，如果服务无法继续使用原隧道，可能返回：
+
+| HTTP 状态 | `error_code` | 处理方式 |
+| --- | --- | --- |
+| 409 | `tunnel_expired` | 原隧道已过期。重复连接不会恢复原地址，请联系支持。 |
+| 409 | `tunnel_validity_insufficient` | 隧道尚可用的时间不足以覆盖请求的运行时长和 5 分钟余量。可尝试缩短请求时长。 |
+
+这两种错误都不会自动更换隧道。Python 和 JS SDK 均将 HTTP 409 表示为 `ConflictError`，可读取异常的 `code` 区分原因。
+
 ## 暂停沙箱 {#pause}
 
 `POST /sandboxes/{sandboxID}/pause`
@@ -148,6 +159,8 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/resume" \
 成功返回 HTTP 201 和[沙箱对象](#sandbox)，使用其中最新的访问凭证。恢复后的运行期限重新计算，不承接暂停前剩余秒数；快照中的文件及未结束进程继续保留。当前恢复依赖原节点可用。
 
 运行中的沙箱调用 resume 返回 409；希望兼容运行和暂停两种状态时使用 [connect](#connect)。
+
+恢复也可能返回上述[隧道错误](#tunnel-errors)；这时暂停记录保留。
 
 ## 重设存活时间 {#timeout}
 
@@ -234,15 +247,34 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 
 ## 访问应用端口 {#application-port}
 
-创建沙箱时设置 `network.allowPublicTraffic=false`，应用端口访问需要连接凭证。向应用端口的 HTTPS 地址发送请求时，传入 `X-Access-Token: <envdAccessToken>`；未带凭证返回 401。DevBox SDK 的写法见[创建参数](../reference/sdk.md#创建参数)。
+先在沙箱内启动应用，例如监听 `0.0.0.0:8080`。使用 DevBox 原生 API 时，从创建或连接响应读取 `tunnelId` 和 `envdUrl`，保留原域名后缀，把主机名里的 EnvD 端口段 `-49983` 换成应用端口段 `-8080`。不要改成 URL 的 `:8080`。
 
-## 使用 E2B 客户端 {#e2b}
+| 用途 | HTTPS 地址示例 |
+| --- | --- |
+| EnvD：执行命令、读写文件 | `https://abcdefgh-49983.devbox-s2.hwtunnel.com` |
+| 应用监听 8080 | `https://abcdefgh-8080.devbox-s2.hwtunnel.com` |
+
+上表中的隧道 ID 和域名后缀仅为示例，实际以后端响应为准。创建时设置 `network.allowPublicTraffic=false` 的沙箱，访问应用端口时需传 `X-Access-Token: <envdAccessToken>`，否则返回 401。生成地址不会改变访问权限。
+
+## E2B 兼容说明 {#e2b}
 
 兼容 `POST /v2/sandboxes`、`GET /v2/sandboxes`、`POST /v2/sandboxes/{sandboxID}/connect`，复用上述业务逻辑、鉴权和配额。E2B 接口返回的 `sandboxID` 使用固定 tunnelId 作为公开别名；单沙箱操作同时接受该别名与原 UUID，仍按当前凭证所属 Namespace 隔离。
 
 E2B 客户端使用响应中的基础域名 `domain` 拼接端口地址。直接访问 EnvD 时使用完整的 `envdUrl`。列表可按 metadata 筛选，包括中文和特殊字符。
 
-Python 客户端可通过 `get_host(8080)` 获取[应用端口地址](#application-port)。执行命令时省略 `user` 会使用沙箱默认用户。
+使用 E2B SDK 创建或连接后，用 `get_host(port)`（Python）或 `getHost(port)`（JS）获取[应用端口](#application-port)的主机名。返回值不含协议，访问时加上 `https://`：
+
+```python
+# sandbox 是 E2B Python SDK 返回的对象
+app_url = f"https://{sandbox.get_host(8080)}"
+```
+
+```js
+// sandbox 是 E2B JS SDK 返回的对象
+const appUrl = `https://${sandbox.getHost(8080)}`;
+```
+
+这两个方法属于 E2B SDK，不是 DevBox SDK 的原生方法。执行命令时省略 `user` 会使用沙箱默认用户。
 
 仅支持完整内存快照。其他非 null 网络字段（例如 `dnsServers`、`httpsPorts`）或 `allow_internet_access:false` 返回 400 `network_policy_unsupported`。创建时非 null 的 `cpuCount`、`volumeMounts`、`iam`、`mcp` 或非空 `Idempotency-Key` 返回 400 `unsupported_create_option`；CPU 规格由模板决定，不支持创建幂等。
 

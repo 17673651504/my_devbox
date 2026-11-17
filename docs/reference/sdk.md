@@ -167,7 +167,19 @@ Python `sandbox.envd.get_metrics()` 或 JS `await sandbox.envd.getMetrics()` 返
 
 Python 也可用 `api_key`、`api_url` 构造参数；JS 对应 `apiKey`、`apiUrl`。显式参数优先于环境变量。通常只需配置 API Key 与服务地址，沙箱连接凭证由 SDK 管理。
 
-SDK 使用创建或连接响应中的完整 EnvD 地址，无需配置集群名、区域或网关域名。可通过 Python `sandbox.envd_url` 或 JS `sandbox.envdUrl` 读取 EnvD 地址；它不是应用端口地址。沙箱时长参数接受 10–86400 秒，不接受 0。
+SDK 使用创建或连接响应中的完整 EnvD 地址，无需配置集群名、区域或网关域名。创建或连接后可读取：
+
+```python
+envd_url = sandbox.envd_url
+```
+
+```js
+const envdUrl = sandbox.envdUrl;
+```
+
+EnvD 地址用于命令和文件等操作。访问沙箱内的应用请使用[应用端口地址](../api/sandboxes.md#application-port)；E2B SDK 的 `get_host()` / `getHost()` 示例见[E2B 兼容说明](../api/sandboxes.md#e2b)。
+
+沙箱时长参数接受 10–86400 秒，不接受 0。
 
 API Key 用于沙箱管理和模板查询请求，服务据此确定用户归属。执行命令、访问文件等沙箱操作由 SDK 使用连接凭证认证，无需用户再次传入 API Key。
 
