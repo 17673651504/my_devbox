@@ -11,12 +11,20 @@ import (
 	"time"
 )
 
-func TestStartLoginWithCallback(t *testing.T) {
+// startTestSession starts a login session against the devstation login page,
+// registering Close with t; it fails the test when the session cannot start.
+func startTestSession(t *testing.T) *LoginSession {
+	t.Helper()
 	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
 	if err != nil {
 		t.Fatalf("start login: %v", err)
 	}
-	defer session.Close()
+	t.Cleanup(session.Close)
+	return session
+}
+
+func TestStartLoginWithCallback(t *testing.T) {
+	session := startTestSession(t)
 
 	if !strings.Contains(session.URL, "origin=devbox") {
 		t.Errorf("login URL should carry the origin param: %s", session.URL)
@@ -58,11 +66,7 @@ func TestStartLoginWithCallback(t *testing.T) {
 }
 
 func TestStartLoginRejectsMissingKey(t *testing.T) {
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
@@ -118,11 +122,7 @@ func TestStartLoginRejectsForeignOrigin(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-			if err != nil {
-				t.Fatalf("start login: %v", err)
-			}
-			defer session.Close()
+			session := startTestSession(t)
 
 			u, _ := url.Parse(session.URL)
 			port := u.Query().Get("callback")
@@ -144,11 +144,7 @@ func TestStartLoginRejectsForeignOrigin(t *testing.T) {
 
 // The devstation login page nests the payload under "result".
 func TestStartLoginWithNestedResult(t *testing.T) {
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
@@ -180,11 +176,7 @@ func TestStartLoginWithNestedResult(t *testing.T) {
 func TestCallbackDebugLogging(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
 
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
