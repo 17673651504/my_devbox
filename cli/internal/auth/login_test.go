@@ -11,12 +11,20 @@ import (
 	"time"
 )
 
-func TestStartLoginWithCallback(t *testing.T) {
+// startTestSession starts a login session against the devstation login page,
+// registering Close with t; it fails the test when the session cannot start.
+func startTestSession(t *testing.T) *LoginSession {
+	t.Helper()
 	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
 	if err != nil {
 		t.Fatalf("start login: %v", err)
 	}
-	defer session.Close()
+	t.Cleanup(session.Close)
+	return session
+}
+
+func TestStartLoginWithCallback(t *testing.T) {
+	session := startTestSession(t)
 
 	if !strings.Contains(session.URL, "origin=devbox") {
 		t.Errorf("login URL should carry the origin param: %s", session.URL)
@@ -31,19 +39,8 @@ func TestStartLoginWithCallback(t *testing.T) {
 		t.Fatalf("login URL missing callback port: %s", session.URL)
 	}
 
-	callback := "http://127.0.0.1:" + port + "/"
-	body := strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
-	req, err := http.NewRequest(http.MethodPost, callback, body)
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {
@@ -58,29 +55,15 @@ func TestStartLoginWithCallback(t *testing.T) {
 }
 
 func TestStartLoginRejectsMissingKey(t *testing.T) {
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
 
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
-		strings.NewReader(`{"error_code":"E1"}`))
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing key, got %d", resp.StatusCode)
+	status := postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"error_code":"E1"}`)
+	if status != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing key, got %d", status)
 	}
 }
 
@@ -118,11 +101,7 @@ func TestStartLoginRejectsForeignOrigin(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-			if err != nil {
-				t.Fatalf("start login: %v", err)
-			}
-			defer session.Close()
+			session := startTestSession(t)
 
 			u, _ := url.Parse(session.URL)
 			port := u.Query().Get("callback")
@@ -144,26 +123,12 @@ func TestStartLoginRejectsForeignOrigin(t *testing.T) {
 
 // The devstation login page nests the payload under "result".
 func TestStartLoginWithNestedResult(t *testing.T) {
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
-	body := strings.NewReader(`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/", body)
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {
@@ -180,30 +145,19 @@ func TestStartLoginWithNestedResult(t *testing.T) {
 func TestCallbackDebugLogging(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
 
-	session, err := StartLogin("https://devstation.connect.huaweicloud.com")
-	if err != nil {
-		t.Fatalf("start login: %v", err)
-	}
-	defer session.Close()
+	session := startTestSession(t)
 
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
-	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+port+"/",
-		strings.NewReader(`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`))
-	if err != nil {
-		t.Fatalf("build request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://devstation.connect.huaweicloud.com")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post callback: %v", err)
-	}
-	_ = resp.Body.Close()
+	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
+		`{"apiKey":"callback-key-42","userName":"tester","userId":"u-1"}`)
 
 	cred, ui, err := session.Wait(context.Background())
-	if err != nil || cred.APIKey != "callback-key-42" {
-		t.Fatalf("wait: key=%q err=%v", cred.APIKey, err)
+	if err != nil {
+		t.Fatalf("wait: %v", err)
+	}
+	if cred.APIKey != "callback-key-42" {
+		t.Fatalf("wait: key=%q, want callback-key-42", cred.APIKey)
 	}
 	if ui == nil || ui.UserName != "tester" {
 		t.Fatalf("expected user info from the callback, got %+v", ui)

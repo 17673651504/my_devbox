@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // sandboxCmd implements `devbox sandbox`.
@@ -107,7 +108,13 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxCreateCwd, sandboxCreateUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
+		Sandbox: sb,
+		Cwd:     sandboxCreateCwd,
+		User:    sandboxCreateUser,
+		Envs:    envMap,
+		Probe:   c.GetSandbox,
+	})
 }
 
 // sandboxListCmd's flag bound variables.
@@ -132,7 +139,7 @@ var sandboxListCmd = &cobra.Command{
 
 // runSandboxList validates the filters, queries the sandboxes and prints them
 // as a table or JSON.
-func runSandboxList(cmd *cobra.Command, args []string) error {
+func runSandboxList(cmd *cobra.Command, _ []string) error {
 	c, err := newClient()
 	if err != nil {
 		return err
@@ -365,25 +372,49 @@ var sandboxResumeCmd = &cobra.Command{
 }
 
 // runSandboxResume resumes one paused sandbox; an explicit -t overrides the TTL.
-func runSandboxResume(cmd *cobra.Command, args []string) error {
+// translateTunnelError maps the Manager's HTTP 409 tunnel error codes on
+// connect/resume (see the sandboxes API "tunnel errors" section) to
+// actionable localized messages; any other error passes through unchanged.
+func translateTunnelError(err error, sandboxID string) error {
+	switch client.APIErrorCode(err) {
+	case client.TunnelExpiredCode:
+		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.TunnelExpired), sandboxID)
+	case client.TunnelValidityInsufficientCode:
+		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.TunnelValidityInsufficient))
+	}
+	return err
+}
+
+// prepareSandboxRef validates the sandbox id and builds the timeout option for
+// the commands that establish a session: with -t omitted the timeout field is
+// not sent (the sandbox keeps its current TTL); an explicit value is validated
+// and set.
+func prepareSandboxRef(cmd *cobra.Command, args []string, timeoutValue int32) (*client.Client, api.TimeoutOption, error) {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
-		return err
+		return nil, api.TimeoutOption{}, err
 	}
 	c, err := newClient()
 	if err != nil {
-		return err
+		return nil, api.TimeoutOption{}, err
 	}
-	// With -t omitted the timeout field is not sent (the sandbox keeps its current TTL); an explicit value is validated and set.
 	opt := api.TimeoutOption{}
 	if cmd.Flags().Changed("timeout") {
-		if err := helpers.ValidateTimeoutSeconds(sandboxResumeTimeout); err != nil {
-			return err
+		if err := helpers.ValidateTimeoutSeconds(timeoutValue); err != nil {
+			return nil, api.TimeoutOption{}, err
 		}
-		opt.Timeout = api.PInt32(sandboxResumeTimeout)
+		opt.Timeout = api.PInt32(timeoutValue)
+	}
+	return c, opt, nil
+}
+
+func runSandboxResume(cmd *cobra.Command, args []string) error {
+	c, opt, err := prepareSandboxRef(cmd, args, sandboxResumeTimeout)
+	if err != nil {
+		return err
 	}
 	_, err = c.ResumeSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
-		return err
+		return translateTunnelError(err, args[0])
 	}
 	// Aligned with e2b: single-line output, no fields.
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.Resumed)+"\n", args[0])
@@ -413,30 +444,25 @@ var sandboxConnectCmd = &cobra.Command{
 // interactive terminal (aligned with e2b's connect): the local terminal
 // becomes the sandbox shell; type exit to leave.
 func runSandboxConnect(cmd *cobra.Command, args []string) error {
-	if err := helpers.ValidateSandboxID(args[0]); err != nil {
-		return err
-	}
-	c, err := newClient()
+	c, opt, err := prepareSandboxRef(cmd, args, sandboxConnectTimeout)
 	if err != nil {
 		return err
-	}
-	// With -t omitted the timeout field is not sent (the sandbox keeps its current TTL); an explicit value is validated and set.
-	opt := api.TimeoutOption{}
-	if cmd.Flags().Changed("timeout") {
-		if err := helpers.ValidateTimeoutSeconds(sandboxConnectTimeout); err != nil {
-			return err
-		}
-		opt.Timeout = api.PInt32(sandboxConnectTimeout)
 	}
 	sb, err := c.ConnectSandbox(cmd.Context(), args[0], opt)
 	if err != nil {
-		return err
+		return translateTunnelError(err, args[0])
 	}
 	envMap, err := helpers.ParseKV(sandboxConnectEnv)
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, sb, sandboxConnectCwd, sandboxConnectUser, envMap)
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
+		Sandbox: sb,
+		Cwd:     sandboxConnectCwd,
+		User:    sandboxConnectUser,
+		Envs:    envMap,
+		Probe:   c.GetSandbox,
+	})
 }
 
 // sandboxTimeoutCmd's flag bound variables.
@@ -561,7 +587,12 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
 	}
-	pc, err := client.NewProcessClient(*sb.Domain, args[0], *sb.ConnectToken, sandboxExecUser, nil)
+	pc, err := client.NewProcessClient(client.SandboxConnection{
+		Domain:       *sb.Domain,
+		SandboxID:    args[0],
+		ConnectToken: *sb.ConnectToken,
+		User:         sandboxExecUser,
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -576,10 +607,27 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if sandboxExecBackground {
-		return helpers.ExecBackground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
+	execOpts := helpers.ExecOptions{
+		Stdout:    cmd.OutOrStdout(),
+		Stderr:    cmd.ErrOrStderr(),
+		Piped:     piped,
+		SandboxID: args[0],
+		Probe:     c.GetSandbox,
 	}
-	return helpers.ExecForeground(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), pc, stream, piped)
+	if sandboxExecBackground {
+		return helpers.ExecBackground(cmd.Context(), pc, stream, execOpts)
+	}
+	return helpers.ExecForeground(cmd.Context(), pc, stream, execOpts)
+}
+
+// addSessionFlags registers the per-session flags shared by the commands that
+// open a terminal or run a command: working directory, environment variables
+// and the sandbox user. The env usage text differs per command (session,
+// terminal or command environment).
+func addSessionFlags(flags *pflag.FlagSet, cwd *string, env *[]string, envUsage i18n.Message, user *string) {
+	flags.StringVarP(cwd, "cwd", "c", "", i18n.T(i18n.Msg.Sandbox.FlagCwd))
+	flags.StringArrayVarP(env, "env", "e", nil, i18n.T(envUsage))
+	flags.StringVarP(user, "user", "u", "", i18n.T(i18n.Msg.Sandbox.FlagUser))
 }
 
 func init() {
@@ -587,8 +635,6 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagTimeout))
 	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateMetadata, "metadata", "m", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagMetadata))
-	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateEnv, "env", "e", nil,
-		i18n.T(i18n.Msg.Sandbox.FlagEnvSession))
 	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateBuildID, "build-id", "b", "",
 		i18n.T(i18n.Msg.Sandbox.FlagBuildID))
 	sandboxCreateCmd.Flags().StringVar(&sandboxCreateOnTimeout, "lifecycle.ontimeout", "",
@@ -599,10 +645,7 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagNetworkPublic))
 	sandboxCreateCmd.Flags().BoolVarP(&sandboxCreateDetach, "detach", "d", false,
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
-	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateCwd, "cwd", "c", "",
-		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxCreateCmd.Flags().StringVarP(&sandboxCreateUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
+	addSessionFlags(sandboxCreateCmd.Flags(), &sandboxCreateCwd, &sandboxCreateEnv, i18n.Msg.Sandbox.FlagEnvSession, &sandboxCreateUser)
 
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
@@ -631,12 +674,7 @@ func init() {
 
 	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
-	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectCwd, "cwd", "c", "",
-		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxConnectCmd.Flags().StringArrayVarP(&sandboxConnectEnv, "env", "e", nil,
-		i18n.T(i18n.Msg.Sandbox.FlagEnvTerm))
-	sandboxConnectCmd.Flags().StringVarP(&sandboxConnectUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
+	addSessionFlags(sandboxConnectCmd.Flags(), &sandboxConnectCwd, &sandboxConnectEnv, i18n.Msg.Sandbox.FlagEnvTerm, &sandboxConnectUser)
 
 	sandboxTimeoutCmd.Flags().Int32VarP(&sandboxTimeoutValue, "timeout", "t", 300,
 		i18n.T(i18n.Msg.Sandbox.FlagNewTimeout))
@@ -648,12 +686,7 @@ func init() {
 
 	sandboxExecCmd.Flags().BoolVarP(&sandboxExecBackground, "background", "b", false,
 		i18n.T(i18n.Msg.Sandbox.FlagBackground))
-	sandboxExecCmd.Flags().StringVarP(&sandboxExecCwd, "cwd", "c", "",
-		i18n.T(i18n.Msg.Sandbox.FlagCwd))
-	sandboxExecCmd.Flags().StringArrayVarP(&sandboxExecEnv, "env", "e", nil,
-		i18n.T(i18n.Msg.Sandbox.FlagEnv))
-	sandboxExecCmd.Flags().StringVarP(&sandboxExecUser, "user", "u", "",
-		i18n.T(i18n.Msg.Sandbox.FlagUser))
+	addSessionFlags(sandboxExecCmd.Flags(), &sandboxExecCwd, &sandboxExecEnv, i18n.Msg.Sandbox.FlagEnv, &sandboxExecUser)
 	// Everything after the sandbox ID is passed through to the remote command.
 	sandboxExecCmd.Flags().SetInterspersed(false)
 

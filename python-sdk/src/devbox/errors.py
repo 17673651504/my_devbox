@@ -110,7 +110,9 @@ def transport_error(error: Exception) -> Exception:
         return RequestTimeoutError(f"request timed out ({type(error).__name__})")
     if isinstance(error, httpx.HTTPError):
         detail = str(error.__cause__ or error)
-        return ServiceUnavailableError(f"DevBox transport failed ({type(error).__name__}): {detail}")
+        return ServiceUnavailableError(
+            f"DevBox transport failed ({type(error).__name__}): {detail}"
+        )
     return error
 
 

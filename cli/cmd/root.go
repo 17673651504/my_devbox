@@ -43,11 +43,13 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-// usageTemplate 基于 cobra v1.10.2 的 defaultUsageTemplate（command.go），仅移除
-// Aliases 段：Use 里的管道写法（如 sandbox|sbx、create|cr）已经向用户展示了
-// 缩写，而 Aliases 行的第一项是 Name() 派生的 "sandbox|sbx"，会与后面的别名
-// 重复。SetUsageTemplate 在根命令上设置后由全部子命令继承。
-// 注意：升级 cobra 版本时，需对照其 defaultUsageTemplate 同步本模板。
+// usageTemplate mirrors cobra v1.10.2's defaultUsageTemplate (command.go) with
+// the Aliases section removed: the pipe notation in Use (eg. sandbox|sbx,
+// create|cr) already exposes the aliases to users, while the Aliases line's
+// first item is the Name()-derived "sandbox|sbx", which would duplicate them.
+// SetUsageTemplate on the root command is inherited by every subcommand.
+// Note: when upgrading cobra, re-sync this template against its
+// defaultUsageTemplate.
 const usageTemplate = `Usage:{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if .HasExample}}
@@ -85,7 +87,7 @@ func init() {
 	// --version outputs only the version string itself (the default template adds a "devbox.exe version " prefix).
 	RootCmd.SetVersionTemplate("{{.Version}}\n")
 
-	// 隐藏 Aliases 段，避免 "sandbox|sbx, sandbox, sbx" 这类重复展示（见 usageTemplate 注释）。
+	// Hide the Aliases section to avoid the duplicated "sandbox|sbx, sandbox, sbx" display (see usageTemplate).
 	RootCmd.SetUsageTemplate(usageTemplate)
 
 	RootCmd.AddCommand(authCmd, sandboxCmd, templateCmd)
