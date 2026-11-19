@@ -518,21 +518,27 @@ func (c *Client) ListTemplates(ctx context.Context, reqEditors ...RequestEditorF
 	return c.Client.Do(req)
 }
 
-// NewListSandboxesRequest constructs an http.Request for the ListSandboxes method
-func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.Request, error) {
-	var err error
-
+// newOperationRequest builds an http.Request for an operation path relative to
+// the server URL. Relative operation paths are prefixed with "." before being
+// resolved against the server URL (oapi-codegen convention).
+func newOperationRequest(server, method, operationPath string, body io.Reader) (*http.Request, error) {
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
-
-	operationPath := "/sandboxes"
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
-
 	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+	return http.NewRequest(method, queryURL.String(), body)
+}
+
+// NewListSandboxesRequest constructs an http.Request for the ListSandboxes method
+func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.Request, error) {
+	req, err := newOperationRequest(server, http.MethodGet, "/sandboxes", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +546,7 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 	if params != nil {
 		// queryValues collects non-styled parameters (passthrough, JSON)
 		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
+		queryValues := req.URL.Query()
 		// rawQueryFragments collects pre-encoded query fragments from
 		// styled parameters, preserving literal commas as delimiters
 		// per the OpenAPI spec (eg. "color=blue,black,brown").
@@ -575,12 +581,7 @@ func NewListSandboxesRequest(server string, params *ListSandboxesParams) (*http.
 		if encoded := queryValues.Encode(); encoded != "" {
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
+		req.URL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	return req, nil
@@ -601,22 +602,7 @@ func NewCreateSandboxRequest(server string, body CreateSandboxJSONRequestBody) (
 func NewCreateSandboxRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := "/sandboxes"
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	req, err := newOperationRequest(server, http.MethodPost, "/sandboxes", body)
 	if err != nil {
 		return nil, err
 	}
@@ -637,22 +623,7 @@ func NewDeleteSandboxRequest(server string, sandboxID SandboxID) (*http.Request,
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	req, err := newOperationRequest(server, http.MethodDelete, fmt.Sprintf("/sandboxes/%s", pathParam0), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -671,22 +642,7 @@ func NewGetSandboxRequest(server string, sandboxID SandboxID) (*http.Request, er
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := newOperationRequest(server, http.MethodGet, fmt.Sprintf("/sandboxes/%s", pathParam0), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -716,22 +672,7 @@ func NewConnectSandboxRequestWithBody(server string, sandboxID SandboxID, conten
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s/connect", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	req, err := newOperationRequest(server, http.MethodPost, fmt.Sprintf("/sandboxes/%s/connect", pathParam0), body)
 	if err != nil {
 		return nil, err
 	}
@@ -752,22 +693,7 @@ func NewPauseSandboxRequest(server string, sandboxID SandboxID) (*http.Request, 
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s/pause", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := newOperationRequest(server, http.MethodPost, fmt.Sprintf("/sandboxes/%s/pause", pathParam0), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -797,22 +723,7 @@ func NewRefreshSandboxRequestWithBody(server string, sandboxID SandboxID, conten
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s/refreshes", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	req, err := newOperationRequest(server, http.MethodPost, fmt.Sprintf("/sandboxes/%s/refreshes", pathParam0), body)
 	if err != nil {
 		return nil, err
 	}
@@ -844,22 +755,7 @@ func NewResumeSandboxRequestWithBody(server string, sandboxID SandboxID, content
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s/resume", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	req, err := newOperationRequest(server, http.MethodPost, fmt.Sprintf("/sandboxes/%s/resume", pathParam0), body)
 	if err != nil {
 		return nil, err
 	}
@@ -891,22 +787,7 @@ func NewSetSandboxTimeoutRequestWithBody(server string, sandboxID SandboxID, con
 		return nil, err
 	}
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/sandboxes/%s/timeout", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	req, err := newOperationRequest(server, http.MethodPost, fmt.Sprintf("/sandboxes/%s/timeout", pathParam0), body)
 	if err != nil {
 		return nil, err
 	}
@@ -920,22 +801,7 @@ func NewSetSandboxTimeoutRequestWithBody(server string, sandboxID SandboxID, con
 func NewListTemplatesRequest(server string) (*http.Request, error) {
 	var err error
 
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := "/templates"
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	req, err := newOperationRequest(server, http.MethodGet, "/templates", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1760,13 +1626,24 @@ func (c *ClientWithResponses) ListTemplatesWithResponse(ctx context.Context, req
 	return ParseListTemplatesResponse(rsp)
 }
 
-// ParseListSandboxesResponse parses an HTTP response from a ListSandboxesWithResponse call
-func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, error) {
+// readResponseBody drains and closes the response body, returning its bytes.
+func readResponseBody(rsp *http.Response) ([]byte, error) {
 	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
+	return io.ReadAll(rsp.Body)
+}
+
+// decodeJSON unmarshals a JSON response body into a newly allocated T.
+func decodeJSON[T any](bodyBytes []byte) (*T, error) {
+	var dest T
+	if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 		return nil, err
 	}
+	return &dest, nil
+}
+
+// ParseListSandboxesResponse parses an HTTP response from a ListSandboxesWithResponse call
+func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, error) {
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &ListSandboxesResponse{
 		Body:         bodyBytes,
@@ -1775,25 +1652,19 @@ func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
+		response.JSON200, err = decodeJSON[[]Sandbox](bodyBytes)
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON400, err = decodeJSON[BadRequest](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON401, err = decodeJSON[Unauthorized](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON401 = &dest
 
 	}
 
@@ -1822,11 +1693,7 @@ func ParseListSandboxesResponse(rsp *http.Response) (*ListSandboxesResponse, err
 
 // ParseCreateSandboxResponse parses an HTTP response from a CreateSandboxWithResponse call
 func ParseCreateSandboxResponse(rsp *http.Response) (*CreateSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &CreateSandboxResponse{
 		Body:         bodyBytes,
@@ -1835,46 +1702,40 @@ func ParseCreateSandboxResponse(rsp *http.Response) (*CreateSandboxResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON201, err = decodeJSON[Sandbox](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON400, err = decodeJSON[BadRequest](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON401, err = decodeJSON[Unauthorized](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimited
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON429, err = decodeJSON[RateLimited](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
-		var dest Unavailable
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON503, err = decodeJSON[Unavailable](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON503 = &dest
 
 	}
 
@@ -1883,11 +1744,7 @@ func ParseCreateSandboxResponse(rsp *http.Response) (*CreateSandboxResponse, err
 
 // ParseDeleteSandboxResponse parses an HTTP response from a DeleteSandboxWithResponse call
 func ParseDeleteSandboxResponse(rsp *http.Response) (*DeleteSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &DeleteSandboxResponse{
 		Body:         bodyBytes,
@@ -1899,11 +1756,10 @@ func ParseDeleteSandboxResponse(rsp *http.Response) (*DeleteSandboxResponse, err
 		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	}
 
@@ -1912,11 +1768,7 @@ func ParseDeleteSandboxResponse(rsp *http.Response) (*DeleteSandboxResponse, err
 
 // ParseGetSandboxResponse parses an HTTP response from a GetSandboxWithResponse call
 func ParseGetSandboxResponse(rsp *http.Response) (*GetSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &GetSandboxResponse{
 		Body:         bodyBytes,
@@ -1925,18 +1777,16 @@ func ParseGetSandboxResponse(rsp *http.Response) (*GetSandboxResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON200, err = decodeJSON[Sandbox](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	}
 
@@ -1945,11 +1795,7 @@ func ParseGetSandboxResponse(rsp *http.Response) (*GetSandboxResponse, error) {
 
 // ParseConnectSandboxResponse parses an HTTP response from a ConnectSandboxWithResponse call
 func ParseConnectSandboxResponse(rsp *http.Response) (*ConnectSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &ConnectSandboxResponse{
 		Body:         bodyBytes,
@@ -1958,32 +1804,28 @@ func ParseConnectSandboxResponse(rsp *http.Response) (*ConnectSandboxResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON200, err = decodeJSON[Sandbox](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON201, err = decodeJSON[Sandbox](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON409, err = decodeJSON[Conflict](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON409 = &dest
 
 	}
 
@@ -1992,11 +1834,7 @@ func ParseConnectSandboxResponse(rsp *http.Response) (*ConnectSandboxResponse, e
 
 // ParsePauseSandboxResponse parses an HTTP response from a PauseSandboxWithResponse call
 func ParsePauseSandboxResponse(rsp *http.Response) (*PauseSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &PauseSandboxResponse{
 		Body:         bodyBytes,
@@ -2008,18 +1846,16 @@ func ParsePauseSandboxResponse(rsp *http.Response) (*PauseSandboxResponse, error
 		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON409, err = decodeJSON[Conflict](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON409 = &dest
 
 	}
 
@@ -2028,11 +1864,7 @@ func ParsePauseSandboxResponse(rsp *http.Response) (*PauseSandboxResponse, error
 
 // ParseRefreshSandboxResponse parses an HTTP response from a RefreshSandboxWithResponse call
 func ParseRefreshSandboxResponse(rsp *http.Response) (*RefreshSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &RefreshSandboxResponse{
 		Body:         bodyBytes,
@@ -2044,18 +1876,16 @@ func ParseRefreshSandboxResponse(rsp *http.Response) (*RefreshSandboxResponse, e
 		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON400, err = decodeJSON[BadRequest](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	}
 
@@ -2064,11 +1894,7 @@ func ParseRefreshSandboxResponse(rsp *http.Response) (*RefreshSandboxResponse, e
 
 // ParseResumeSandboxResponse parses an HTTP response from a ResumeSandboxWithResponse call
 func ParseResumeSandboxResponse(rsp *http.Response) (*ResumeSandboxResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &ResumeSandboxResponse{
 		Body:         bodyBytes,
@@ -2077,25 +1903,22 @@ func ParseResumeSandboxResponse(rsp *http.Response) (*ResumeSandboxResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Sandbox
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON201, err = decodeJSON[Sandbox](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON409, err = decodeJSON[Conflict](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON409 = &dest
 
 	}
 
@@ -2104,11 +1927,7 @@ func ParseResumeSandboxResponse(rsp *http.Response) (*ResumeSandboxResponse, err
 
 // ParseSetSandboxTimeoutResponse parses an HTTP response from a SetSandboxTimeoutWithResponse call
 func ParseSetSandboxTimeoutResponse(rsp *http.Response) (*SetSandboxTimeoutResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &SetSandboxTimeoutResponse{
 		Body:         bodyBytes,
@@ -2120,18 +1939,16 @@ func ParseSetSandboxTimeoutResponse(rsp *http.Response) (*SetSandboxTimeoutRespo
 		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON400, err = decodeJSON[BadRequest](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON404, err = decodeJSON[NotFound](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
 
 	}
 
@@ -2140,11 +1957,7 @@ func ParseSetSandboxTimeoutResponse(rsp *http.Response) (*SetSandboxTimeoutRespo
 
 // ParseListTemplatesResponse parses an HTTP response from a ListTemplatesWithResponse call
 func ParseListTemplatesResponse(rsp *http.Response) (*ListTemplatesResponse, error) {
-	defer func() { _ = rsp.Body.Close() }()
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	if err != nil {
-		return nil, err
-	}
+	bodyBytes, err := readResponseBody(rsp)
 
 	response := &ListTemplatesResponse{
 		Body:         bodyBytes,
@@ -2153,25 +1966,19 @@ func ParseListTemplatesResponse(rsp *http.Response) (*ListTemplatesResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Template
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
+		response.JSON200, err = decodeJSON[[]Template](bodyBytes)
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON401, err = decodeJSON[Unauthorized](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		response.JSON403, err = decodeJSON[Forbidden](bodyBytes)
+		if err != nil {
 			return nil, err
 		}
-		response.JSON403 = &dest
 
 	}
 

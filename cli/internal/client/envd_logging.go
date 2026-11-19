@@ -11,8 +11,9 @@ import (
 	"time"
 )
 
-// envdRelayCookie 是数据面请求携带的连接凭据 Cookie 名。其值是 JWT 凭据，
-// 永远不落日志，只记录存在性与长度。
+// envdRelayCookie is the cookie name carrying the relay connect token on
+// data-plane requests. Its value is a JWT credential: never logged, only its
+// presence and length.
 const envdRelayCookie = "relay_token"
 
 // maxLoggedErrorBody bounds how many bytes of a non-2xx response body are
@@ -48,8 +49,9 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 	if cookie, err := req.Cookie(envdRelayCookie); err == nil {
 		attrs = append(attrs, "relay_token", fmt.Sprintf("present(len=%d)", len(cookie.Value)))
 	}
-	// 请求体只在长度已知且不大时缓冲：客户端流（StreamInput）的 body 是
-	// 边发边写的管道，读它会造成死锁。
+	// Buffer the request body only when its length is known and bounded: a
+	// client stream's body (StreamInput) is written while the request is in
+	// flight, and reading it would deadlock.
 	if req.Body != nil && req.ContentLength >= 0 && req.ContentLength <= maxBodyForLog {
 		if data, err := io.ReadAll(req.Body); err == nil {
 			_ = req.Body.Close()
@@ -82,9 +84,10 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 		"status", resp.StatusCode,
 		"content_type", resp.Header.Get("Content-Type"),
 	)
-	// 非 2xx：错误体（Connect 错误 JSON）缓冲进日志，剩余字节经 prefixed
-	// ReadCloser 交还调用方；2xx 一律不碰 body——流式响应读到 EOF 才返回，
-	// 缓冲即卡死。
+	// Non-2xx: buffer the error body (the Connect error JSON) for the log and
+	// hand the remaining bytes back to the caller via the prefixed ReadCloser.
+	// 2xx bodies are never touched - a streaming response only returns at EOF,
+	// so buffering it would stall the session.
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		if resp.Body != nil {
 			data, _ := io.ReadAll(io.LimitReader(resp.Body, maxLoggedErrorBody))
@@ -103,10 +106,11 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return resp, nil
 }
 
-// prefixedReadCloser 把缓冲的前缀字节拼回原始响应体：调用方仍能读到完整
-// body，Close 委托给原始 body。
+// prefixedReadCloser prepends the buffered bytes to the original response
+// body: the caller still reads the full body, and Close delegates to the
+// original body.
 type prefixedReadCloser struct {
-	io.Reader // MultiReader(缓冲前缀, 原始 body)
+	io.Reader // MultiReader(buffered prefix, original body)
 	original  io.ReadCloser
 }
 

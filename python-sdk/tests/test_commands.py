@@ -10,7 +10,11 @@ import httpx
 import pytest
 
 from devbox import (
-    CommandExitError, CommandResult, ConfigurationError, ProtocolError, RequestTimeoutError,
+    CommandExitError,
+    CommandResult,
+    ConfigurationError,
+    ProtocolError,
+    RequestTimeoutError,
 )
 from devbox._transport import AsyncTransport, SyncTransport
 from devbox.commands import AsyncCommands, CommandHandle, Commands
@@ -18,25 +22,31 @@ from devbox.pty import AsyncPty, Pty
 
 
 @pytest.mark.parametrize("elapsed, error", [(2, RequestTimeoutError), (0.1, ProtocolError)])
-def test_command_missing_exit_status_at_deadline(elapsed, error) -> None:
-    def events():
+def test_command_missing_exit_status_at_deadline(elapsed: float, error: type[Exception]) -> None:
+    def events() -> Generator[Mapping[str, Any], None, None]:
         yield {"event": {}}
 
-    commands = Commands(lambda: None)
+    def unused_transport() -> SyncTransport:
+        raise AssertionError("unused")
+
+    commands = Commands(unused_transport)
     handle = CommandHandle(1, commands, events(), reconnect_timeout=1)
     with (
         patch.object(commands, "_start", return_value=handle),
         patch("devbox.commands.time.monotonic", side_effect=[100, 100 + elapsed]),
+        pytest.raises(error),
     ):
-        with pytest.raises(error):
-            commands.run("test", timeout=1)
+        commands.run("test", timeout=1)
 
 
 def test_background_wait_does_not_infer_timeout_from_elapsed_time() -> None:
-    def events():
+    def events() -> Generator[Mapping[str, Any], None, None]:
         yield {"event": {}}
 
-    commands = Commands(lambda: None)
+    def unused_transport() -> SyncTransport:
+        raise AssertionError("unused")
+
+    commands = Commands(unused_transport)
     handle = CommandHandle(1, commands, events(), reconnect_timeout=1)
     with (
         patch.object(commands, "_start", return_value=handle),

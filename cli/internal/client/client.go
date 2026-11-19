@@ -37,11 +37,25 @@ type Client struct {
 	api *api.ClientWithResponses
 }
 
+// Business error codes the Manager returns with HTTP 409 on connect/resume
+// when the sandbox tunnel cannot serve the request (see the sandboxes API
+// "tunnel errors" section).
+const (
+	// TunnelExpiredCode means the original tunnel has expired; reconnecting
+	// will not restore the original address.
+	TunnelExpiredCode = "tunnel_expired"
+	// TunnelValidityInsufficientCode means the tunnel's remaining validity
+	// cannot cover the requested runtime plus a 5-minute margin.
+	TunnelValidityInsufficientCode = "tunnel_validity_insufficient"
+)
+
 // APIError is an error returned by the DevBox API. It exposes the HTTP status
-// code and the human-readable message so callers can branch on the failure
-// cause (eg. 401 == bad API key).
+// code, the Manager business error code (the body's "error" field, eg.
+// tunnel_expired) and the human-readable message so callers can branch on the
+// failure cause (eg. 401 == bad API key).
 type APIError struct {
 	StatusCode int
+	Code       string
 	Message    string
 }
 
@@ -55,6 +69,17 @@ func (e *APIError) Error() string {
 // recognized uniformly via errors.Is regardless of which code path built it.
 func (e *APIError) Is(target error) bool {
 	return target == ErrUnauthorized && e.StatusCode == http.StatusUnauthorized
+}
+
+// APIErrorCode returns the Manager business error code carried by err (the
+// body's "error" field, eg. tunnel_expired). It returns "" when err is not an
+// APIError or carries no code.
+func APIErrorCode(err error) string {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Code
+	}
+	return ""
 }
 
 // UpgradeRequiredError is returned when the server rejects a request with
@@ -124,17 +149,18 @@ func checkStatus(resp *http.Response, body []byte) error {
 		return nil
 	}
 
+	code, msg := serverError(body)
 	if resp.StatusCode == http.StatusUpgradeRequired {
-		return &UpgradeRequiredError{Message: serverMessage(body)}
+		return &UpgradeRequiredError{Message: msg}
 	}
 
-	apiErr := &APIError{StatusCode: resp.StatusCode}
-	if msg := serverMessage(body); msg != "" {
+	apiErr := &APIError{StatusCode: resp.StatusCode, Code: code}
+	if msg != "" {
 		apiErr.Message = msg
 		return apiErr
 	}
 	// Non-JSON or unexpected body: echo a trimmed excerpt for debuggability.
-	msg := strings.TrimSpace(string(body))
+	msg = strings.TrimSpace(string(body))
 	if len(msg) > 512 {
 		msg = msg[:512] + "..."
 	}
@@ -142,12 +168,13 @@ func checkStatus(resp *http.Response, body []byte) error {
 	return apiErr
 }
 
-// serverMessage extracts the human-readable message from a DevBox error body
-// ({message: ...}), returning empty for non-JSON or message-less bodies.
-func serverMessage(body []byte) string {
+// serverError extracts the business error code and the human-readable message
+// from a DevBox error body ({"error": ..., "message": ...}), returning empty
+// strings for non-JSON bodies.
+func serverError(body []byte) (code, msg string) {
 	var e api.Error
-	if err := json.Unmarshal(body, &e); err == nil && e.Message != "" {
-		return e.Message
+	if err := json.Unmarshal(body, &e); err == nil {
+		code, msg = e.Error, e.Message
 	}
-	return ""
+	return code, msg
 }

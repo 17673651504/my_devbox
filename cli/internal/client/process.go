@@ -74,13 +74,26 @@ type ProcessClient struct {
 	rpc process.ProcessClient
 }
 
-// NewProcessClient builds a client against the sandbox domain. The domain
-// embeds the envd port (eg. https://<tunnel>-49983.host); when it cannot be
-// parsed the default 49983 is used. A non-empty user is sent via HTTP Basic
-// auth on every request so envd starts processes as that sandbox user. All
-// traffic is logged at debug level (see envdLoggingTransport) so `-v` runs
-// show the data-plane requests and responses.
-func NewProcessClient(domain, sandboxID, connectToken, user string, httpClient *http.Client) (*ProcessClient, error) {
+// SandboxConnection describes how to reach one sandbox's envd data plane.
+type SandboxConnection struct {
+	// Domain is the sandbox relay domain embedding the envd port
+	// (eg. https://<tunnel>-49983.host).
+	Domain string
+	// SandboxID identifies the sandbox on the relay gateway.
+	SandboxID string
+	// ConnectToken is the relay credential sent as the relay_token cookie.
+	ConnectToken string
+	// User selects the sandbox user for process starts via HTTP Basic auth
+	// (empty password). Empty means the sandbox default user.
+	User string
+}
+
+// NewProcessClient builds a client against the connection's domain. When the
+// domain cannot be parsed the default 49983 port is used. A non-empty User is
+// sent via HTTP Basic auth on every request so envd starts processes as that
+// sandbox user. All traffic is logged at debug level (see envdLoggingTransport)
+// so `-v` runs show the data-plane requests and responses.
+func NewProcessClient(conn SandboxConnection, httpClient *http.Client) (*ProcessClient, error) {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
@@ -92,25 +105,25 @@ func NewProcessClient(domain, sandboxID, connectToken, user string, httpClient *
 	if _, ok := httpClient.Transport.(*envdLoggingTransport); !ok {
 		httpClient.Transport = &envdLoggingTransport{base: httpClient.Transport}
 	}
-	u, err := url.Parse(domain)
+	u, err := url.Parse(conn.Domain)
 	if err != nil {
-		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidSandboxDomain), domain, err)
+		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidSandboxDomain), conn.Domain, err)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidDomainScheme), domain)
+		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidDomainScheme), conn.Domain)
 	}
 	rpc := process.NewProcessClient(
 		httpClient,
-		domain,
+		conn.Domain,
 		connect.WithInterceptors(&relayInterceptor{
-			sandboxID:    sandboxID,
-			connectToken: connectToken,
+			sandboxID:    conn.SandboxID,
+			connectToken: conn.ConnectToken,
 			sandboxPort:  envdPortFromDomain(u),
-			user:         user,
+			user:         conn.User,
 		}),
-		// JSON codec：与 processes API 文档对齐（application/json /
-		// application/connect+json），-v 日志里请求体直接可读；
-		// envd（connect-go 服务端）默认支持 JSON codec。
+		// JSON codec: aligns with the processes API docs (application/json and
+		// application/connect+json) and keeps -v request bodies readable; the
+		// envd connect-go server accepts the JSON codec out of the box.
 		connect.WithProtoJSON(),
 	)
 	return &ProcessClient{rpc: rpc}, nil
