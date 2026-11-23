@@ -183,13 +183,21 @@ describe("sandboxes", () => {
     agent
       .get("https://manager.example.test")
       .intercept({ path: "/sandboxes", method: "POST" })
-      .reply(201, { ...sandboxResponse, connectToken: "old-token" });
+      .reply(201, {
+        ...sandboxResponse,
+        connectToken: "old-token",
+        envdAccessToken: "old-token",
+      });
     const runtime = agent.get("https://runtime.example.test");
     runtime
       .intercept({
         path: "/files?path=%2Ftmp%2Fproof",
         method: "GET",
-        headers: { cookie: "relay_token=old-token", "e2b-sandbox-id": "sbx-1" },
+        headers: {
+          cookie: "relay_token=old-token",
+          "e2b-sandbox-id": "sbx-1",
+          "x-access-token": "old-token",
+        },
       })
       .reply(200, "proof", {
         headers: {
@@ -201,7 +209,11 @@ describe("sandboxes", () => {
       .intercept({
         path: "/files?path=%2Ftmp%2Fproof",
         method: "GET",
-        headers: { cookie: "relay_token=new-token", "e2b-sandbox-id": "sbx-1" },
+        headers: {
+          cookie: "relay_token=new-token",
+          "e2b-sandbox-id": "sbx-1",
+          "x-access-token": "new-token",
+        },
       })
       .reply(200, "proof");
 

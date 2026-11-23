@@ -172,7 +172,11 @@ def test_gateway_refreshes_expiring_connect_token() -> None:
 
 
 def test_gateway_response_refreshes_connect_token() -> None:
-    response = {**connection_response(), "domain": "https://runtime.example.test"}
+    response = {
+        **connection_response(),
+        "domain": "https://runtime.example.test",
+        "envdAccessToken": "connect-token",
+    }
 
     with client(lambda _: httpx.Response(201, json=response)) as api:
         sandbox = api.sandboxes.create()
@@ -190,6 +194,7 @@ def test_gateway_response_refreshes_connect_token() -> None:
             assert sandbox._connection.connect_token == "new-token"
             assert sandbox._connection.token_expiration == 4_000_000_000
             assert gateway._client.headers["Cookie"] == "relay_token=new-token"
+            assert gateway._client.headers["X-Access-Token"] == "new-token"
         finally:
             sandbox.close()
 

@@ -502,6 +502,11 @@ class Sandbox:
         self._connection = replace(
             self._connection,
             connect_token=token,
+            envd_access_token=(
+                token
+                if self._connection.envd_access_token == self._connection.connect_token
+                else self._connection.envd_access_token
+            ),
             token_expiration=token_expiration,
         )
         if self._gateway is not None:
@@ -775,6 +780,11 @@ class AsyncSandbox:
         self._connection = replace(
             self._connection,
             connect_token=token,
+            envd_access_token=(
+                token
+                if self._connection.envd_access_token == self._connection.connect_token
+                else self._connection.envd_access_token
+            ),
             token_expiration=token_expiration,
         )
         if self._gateway is not None:

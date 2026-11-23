@@ -403,7 +403,11 @@ export class Sandbox {
     if (!Number.isSafeInteger(tokenExpiration) || tokenExpiration <= 0) {
       throw new ProtocolError("gateway refreshed token expiration is invalid");
     }
-    this.#connection = { ...this.#connection, connectToken, tokenExpiration };
+    const envdAccessToken =
+      this.#connection.envdAccessToken === this.#connection.connectToken
+        ? connectToken
+        : this.#connection.envdAccessToken;
+    this.#connection = { ...this.#connection, connectToken, envdAccessToken, tokenExpiration };
     this.#gateway?.updateHeaders(gatewayHeaders(this.#connection));
   }
 }
