@@ -11,7 +11,7 @@ DevBox 提供隔离的云端 Linux 沙箱。通过 Python 或 JavaScript/TypeScr
 需要 Python 3.10+，或 Node.js 20.18.1+。从源码安装：
 
 ```bash
-git clone https://github.com/huaweicloud/devspace-devbox.git
+git clone --branch dev https://github.com/huaweicloud/devspace-devbox.git
 cd devspace-devbox
 ```
 
@@ -31,21 +31,19 @@ npm install /path/to/devspace-devbox/js-sdk
 
 ## 配置凭证
 
-准备服务提供的 API Key 和访问地址。不要将 API Key 写入源码或提交到 Git。
+准备 DevBox API Key。SDK 默认连接生产管理面 `https://devbox.developer.myhuaweicloud.com`。不要将 API Key 写入源码或提交到 Git。
 
 ::: code-group
 ```bash [Linux / macOS]
 export DEVBOX_API_KEY="<你的 API Key>"
-export DEVBOX_API_URL="https://<服务访问域名>"
 ```
 
 ```bat [Windows CMD]
 set "DEVBOX_API_KEY=<你的 API Key>"
-set "DEVBOX_API_URL=https://<服务访问域名>"
 ```
 :::
 
-已使用默认服务地址时，可以不设置 `DEVBOX_API_URL`。详见[配置参考](./reference/sdk.md#配置)。
+使用其他环境时，通过 `DEVBOX_API_URL` 设置该环境的管理面地址。详见[配置参考](./reference/sdk.md#配置)。
 
 ## 创建并使用沙箱
 

@@ -4,25 +4,25 @@ DevBox API 分为沙箱管理与沙箱内操作。各资源页面列出真实 HT
 
 | 资源 | 请求地址 | 鉴权 |
 | --- | --- | --- |
-| [沙箱](./sandboxes.md)、[模板](./templates.md) | 服务提供的 API 地址 | `X-API-Key` |
-| [进程与终端](./processes.md)、[文件系统](./filesystem.md) | 创建或连接响应中的 `domain` | `Cookie: relay_token=<connectToken>` |
+| [沙箱](./sandboxes.md)、[模板](./templates.md) | 生产管理面 `https://devbox.developer.myhuaweicloud.com` | `X-API-Key` |
+| [进程与终端](./processes.md)、[文件系统](./filesystem.md) | 创建或连接响应中的 `envdUrl` | `Cookie: relay_token=<connectToken>` |
 
 ## 地址与鉴权 {#authentication}
 
-管理请求使用 HTTPS。以下示例中的变量由使用者配置：
+以下示例使用生产管理面地址。使用其他环境时，将 `DEVBOX_API_URL` 和 API Key 换成该环境的配置。
 
 ```bash
-export DEVBOX_API_URL="https://<服务访问域名>"
+export DEVBOX_API_URL="https://devbox.developer.myhuaweicloud.com"
 export DEVBOX_API_KEY="<devbox scope 的 API Key>"
 ```
 
 API Key 对应的 Namespace 决定沙箱归属，调用时不需要传入 Namespace。
 
-创建沙箱或调用 [connect](./sandboxes.md#connect) 后，从响应中取得 `sandboxID`、`domain`、`connectToken`：
+创建沙箱或调用 [connect](./sandboxes.md#connect) 后，从响应中取得 `sandboxID`、`envdUrl` 和 `connectToken`。
 
 ```bash
 export SANDBOX_ID="<sandboxID>"
-export DEVBOX_DOMAIN="<domain 返回的完整 HTTPS 地址>"
+export DEVBOX_DOMAIN="<envdUrl 返回的完整 HTTPS 地址>"
 export DEVBOX_CONNECT_TOKEN="<connectToken>"
 ```
 

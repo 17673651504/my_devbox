@@ -1,6 +1,6 @@
 # 进程与终端 API
 
-请求发送到沙箱 `domain`，使用[连接凭证](./index.md#authentication)。接口前缀为 `/process.Process`，HTTP 方法均为 POST。
+请求发送到创建或连接响应中的 `envdUrl`，使用[连接凭证](./index.md#authentication)。接口前缀为 `/process.Process`，HTTP 方法均为 POST。
 
 | 操作 | 路径 | 类型 |
 | --- | --- | --- |

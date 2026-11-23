@@ -1,6 +1,6 @@
 # 文件系统 API
 
-请求发送到沙箱 `domain`，使用[连接凭证](./index.md#authentication)。文件内容采用普通 HTTP，目录和元数据使用 ConnectRPC。
+请求发送到创建或连接响应中的 `envdUrl`，使用[连接凭证](./index.md#authentication)。文件内容采用普通 HTTP，目录和元数据使用 ConnectRPC。
 
 | 操作 | 方法与路径 | 类型 |
 | --- | --- | --- |

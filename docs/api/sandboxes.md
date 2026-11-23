@@ -42,7 +42,7 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes" \
   --data '{"templateID":"default","timeout":300,"envVars":{"APP_MODE":"demo"},"metadata":{"project":"example"},"lifecycle":{"onTimeout":"pause","autoResume":true}}'
 ```
 
-成功返回 HTTP 201 和[沙箱对象](#sandbox)。保存 `sandboxID`；沙箱内请求使用响应中的 `domain` 和 `connectToken`。
+成功返回 HTTP 201 和[沙箱对象](#sandbox)。保存 `sandboxID`。沙箱内请求使用响应中的 `envdUrl` 和 `connectToken`。
 
 模板或指定 Build 不可用时返回 404；资源或依赖暂不可用时可返回 503；请求或资源配额耗尽时返回 429。出现 `tunnel_quota_exceeded` 时，需释放账户下闲置沙箱或隧道。
 
@@ -115,7 +115,7 @@ curl --fail-with-body "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID/connect" \
 | running | 返回访问凭证；指定 timeout 时保证至少剩余相应时间，不缩短期限；省略时不主动延长 | 200 |
 | paused | 恢复同一沙箱并返回访问凭证；按 timeout 设置新的运行期限，省略时使用服务默认时长 | 201 |
 
-运行中返回 HTTP 200，执行恢复后返回 HTTP 201，响应均为[沙箱对象](#sandbox)。该接口准备访问入口，实际数据连接由调用者向 `domain` 发起。状态暂不允许操作时返回 409。
+运行中返回 HTTP 200，执行恢复后返回 HTTP 201，响应均为[沙箱对象](#sandbox)。实际数据连接由调用者向返回的 `envdUrl` 发起。状态暂不允许操作时返回 409。
 
 ### 隧道错误 {#tunnel-errors}
 
@@ -234,11 +234,11 @@ curl --fail-with-body -X DELETE "$DEVBOX_API_URL/sandboxes/$SANDBOX_ID" \
 | `memoryMB` / `diskSizeMB` | integer | 内存与磁盘规格，单位 MiB |
 | `metadata` | object | 业务标签，可省略 |
 | `lifecycle` | object | `onTimeout` 与 `autoResume` 配置 |
-| `domain` | string | 完整沙箱 HTTPS 地址 |
-| `tunnelId` | string | 隧道标识；正常访问使用 domain 即可 |
+| `domain` | string | 兼容字段，原生接口返回完整地址，E2B 接口返回基础域名 |
+| `tunnelId` | string | 隧道标识，用于访问沙箱中的应用端口 |
 | `connectToken` | string | 沙箱访问凭证，用于 relay_token Cookie |
 | `envdAccessToken` | string | 与 connectToken 相同的凭证；DevBox SDK 同时使用 X-Access-Token 头和兼容 Cookie |
-| `envdUrl` | string | 数据面完整 HTTPS 地址；与原接口的 domain 相同 |
+| `envdUrl` | string | EnvD 的完整 HTTPS 地址，用于命令、文件和终端 |
 | `envdVersion` | string | 当前 EnvD 协议版本 |
 | `clientID` | string | E2B 兼容字段，当前为空字符串，不作为身份或权限依据 |
 | `tokenExpiration` | integer | 访问凭证的 Unix 到期秒数 |

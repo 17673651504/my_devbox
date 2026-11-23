@@ -163,9 +163,9 @@ Python `sandbox.envd.get_metrics()` 或 JS `await sandbox.envd.getMetrics()` 返
 | 环境变量 | 用途 |
 | --- | --- |
 | `DEVBOX_API_KEY` | API Key，必填 |
-| `DEVBOX_API_URL` | 服务地址，默认 `https://devbox.developer.myhuaweicloud.com` |
+| `DEVBOX_API_URL` | 管理面地址，默认使用生产域名 `https://devbox.developer.myhuaweicloud.com` |
 
-Python 也可用 `api_key`、`api_url` 构造参数；JS 对应 `apiKey`、`apiUrl`。显式参数优先于环境变量。通常只需配置 API Key 与服务地址，沙箱连接凭证由 SDK 管理。
+Python 也可用 `api_key`、`api_url` 构造参数，JS 对应 `apiKey`、`apiUrl`。显式参数优先于环境变量。使用默认生产入口时，只需配置 API Key。沙箱连接凭证由 SDK 管理。
 
 SDK 使用创建或连接响应中的完整 EnvD 地址，无需配置集群名、区域或网关域名。创建或连接后可读取：
 

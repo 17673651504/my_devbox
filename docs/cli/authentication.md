@@ -7,6 +7,8 @@ description: 使用浏览器登录或 API Key 登录 DevBox。
 
 <p class="lead">在创建或连接沙箱前，先使用 DevBox CLI 建立登录状态。</p>
 
+正式发布的 CLI 内置生产管理面地址 `https://devbox.developer.myhuaweicloud.com`。使用测试构建时，API 地址以该构建内置的配置为准。
+
 ## 浏览器登录
 
 个人开发环境优先使用浏览器登录：
