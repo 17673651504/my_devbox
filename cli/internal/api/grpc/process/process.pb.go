@@ -1,7 +1,7 @@
 // Code copied from the sandbox-local envd contract:
 // ConchSandbox/envd (based on e2b-dev/infra), packages/envd/spec/process/process.proto.
 // It is the source of truth for the process.Process ConnectRPC service; the
-// generated Go code lives in ../processgen. Regenerate with:
+// generated Go code lives next to this file. Regenerate with:
 //
 //	go generate ./...
 
@@ -1832,7 +1832,7 @@ const file_process_proto_rawDesc = "" +
 	"\n" +
 	"SendSignal\x12\x1a.process.SendSignalRequest\x1a\x1b.process.SendSignalResponse\x12E\n" +
 	"\n" +
-	"CloseStdin\x12\x1a.process.CloseStdinRequest\x1a\x1b.process.CloseStdinResponseBLZJgithub.com/huaweicloud/devspace-devbox/cli/internal/api/processgen;processb\x06proto3"
+	"CloseStdin\x12\x1a.process.CloseStdinRequest\x1a\x1b.process.CloseStdinResponseBNZLgithub.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process;processb\x06proto3"
 
 var (
 	file_process_proto_rawDescOnce sync.Once

@@ -60,7 +60,7 @@ func TestUserAgentInjected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if _, err := c.api.ListTemplatesWithResponse(context.Background()); err != nil {
+	if _, err := c.manager.ListTemplatesWithResponse(context.Background()); err != nil {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if gotAPI != "devbox-cli/0.1.0-release" {

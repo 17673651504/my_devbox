@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
@@ -59,15 +59,15 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req := api.NewSandbox{TemplateID: args[0]}
+	req := manager.NewSandbox{TemplateID: args[0]}
 	if cmd.Flags().Changed("timeout") {
 		if err := helpers.ValidateTimeoutSeconds(sandboxCreateTimeout); err != nil {
 			return err
 		}
-		req.Timeout = api.PInt32(sandboxCreateTimeout)
+		req.Timeout = manager.PInt32(sandboxCreateTimeout)
 	}
 	if cmd.Flags().Changed("build-id") {
-		req.BuildID = api.PString(sandboxCreateBuildID)
+		req.BuildID = manager.PString(sandboxCreateBuildID)
 	}
 	if req.Metadata, err = helpers.ParseMetadata(sandboxCreateMetadata); err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidMetadata), err)
@@ -79,21 +79,21 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	// Aligned with e2b: -e only sets the terminal session's environment variables (sandbox-level envVars are not written).
 
 	if cmd.Flags().Changed("lifecycle.ontimeout") {
-		ot := api.SandboxLifecycleOnTimeout(sandboxCreateOnTimeout)
+		ot := manager.SandboxLifecycleOnTimeout(sandboxCreateOnTimeout)
 		if !ot.Valid() {
 			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOnTimeout), sandboxCreateOnTimeout)
 		}
-		if sandboxCreateAutoResume && sandboxCreateOnTimeout != string(api.Pause) {
+		if sandboxCreateAutoResume && sandboxCreateOnTimeout != string(manager.Pause) {
 			return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
 		}
-		req.Lifecycle = &api.SandboxLifecycle{OnTimeout: ot, AutoResume: sandboxCreateAutoResume}
+		req.Lifecycle = &manager.SandboxLifecycle{OnTimeout: ot, AutoResume: sandboxCreateAutoResume}
 	} else if cmd.Flags().Changed("lifecycle.autoresume") {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
 	}
 
 	// Only submitted when the user explicitly passes the flag; omitted otherwise.
 	if cmd.Flags().Changed("network.allow-public-traffic") {
-		req.Network = &api.SandboxNetwork{AllowPublicTraffic: sandboxCreateNetworkAllowPublic}
+		req.Network = &manager.SandboxNetwork{AllowPublicTraffic: sandboxCreateNetworkAllowPublic}
 	}
 
 	sb, err := c.CreateSandbox(cmd.Context(), req)
@@ -153,11 +153,11 @@ func runSandboxList(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
 		}
 	}
-	params := &api.ListSandboxesParams{
-		Metadata:     api.OptString(sandboxListMetadata),
-		Template:     api.OptString(sandboxListTemplate),
-		StartedAfter: api.OptString(sandboxListStartedAfter),
-		Order:        api.OptString(sandboxListOrder),
+	params := &manager.ListSandboxesParams{
+		Metadata:     manager.OptString(sandboxListMetadata),
+		Template:     manager.OptString(sandboxListTemplate),
+		StartedAfter: manager.OptString(sandboxListStartedAfter),
+		Order:        manager.OptString(sandboxListOrder),
 	}
 	if cmd.Flags().Changed("state") {
 		states, err := helpers.ParseStates(sandboxListStates)
@@ -171,7 +171,7 @@ func runSandboxList(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidLimit), sandboxListLimit)
 	}
 	if sandboxListLimit != 0 {
-		params.Limit = api.PInt(sandboxListLimit)
+		params.Limit = manager.PInt(sandboxListLimit)
 	}
 
 	res, err := c.ListSandboxes(cmd.Context(), params)
@@ -283,7 +283,7 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillAllConflict))
 		}
 		// List by state/metadata then kill each; the state defaults to running.
-		states := []api.SandboxState{api.Running}
+		states := []manager.SandboxState{manager.Running}
 		if cmd.Flags().Changed("state") {
 			parsed, err := helpers.ParseStates(sandboxKillState)
 			if err != nil {
@@ -291,9 +291,9 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 			}
 			states = parsed
 		}
-		params := &api.ListSandboxesParams{
+		params := &manager.ListSandboxesParams{
 			State:    &states,
-			Metadata: api.OptString(sandboxKillMetadata),
+			Metadata: manager.OptString(sandboxKillMetadata),
 		}
 		for {
 			res, listErr := c.ListSandboxes(cmd.Context(), params)
@@ -306,7 +306,7 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 			if res.NextToken == "" {
 				break
 			}
-			params.NextToken = api.PString(res.NextToken)
+			params.NextToken = manager.PString(res.NextToken)
 		}
 	} else if len(ids) == 0 {
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillRequiresArgs))
@@ -389,20 +389,20 @@ func translateTunnelError(err error, sandboxID string) error {
 // the commands that establish a session: with -t omitted the timeout field is
 // not sent (the sandbox keeps its current TTL); an explicit value is validated
 // and set.
-func prepareSandboxRef(cmd *cobra.Command, args []string, timeoutValue int32) (*client.Client, api.TimeoutOption, error) {
+func prepareSandboxRef(cmd *cobra.Command, args []string, timeoutValue int32) (*client.Client, manager.TimeoutOption, error) {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
-		return nil, api.TimeoutOption{}, err
+		return nil, manager.TimeoutOption{}, err
 	}
 	c, err := newClient()
 	if err != nil {
-		return nil, api.TimeoutOption{}, err
+		return nil, manager.TimeoutOption{}, err
 	}
-	opt := api.TimeoutOption{}
+	opt := manager.TimeoutOption{}
 	if cmd.Flags().Changed("timeout") {
 		if err := helpers.ValidateTimeoutSeconds(timeoutValue); err != nil {
-			return nil, api.TimeoutOption{}, err
+			return nil, manager.TimeoutOption{}, err
 		}
-		opt.Timeout = api.PInt32(timeoutValue)
+		opt.Timeout = manager.PInt32(timeoutValue)
 	}
 	return c, opt, nil
 }
@@ -492,8 +492,8 @@ func runSandboxTimeout(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := c.SetSandboxTimeout(cmd.Context(), args[0], api.TimeoutOption{
-		Timeout: api.PInt32(sandboxTimeoutValue),
+	if err := c.SetSandboxTimeout(cmd.Context(), args[0], manager.TimeoutOption{
+		Timeout: manager.PInt32(sandboxTimeoutValue),
 	}); err != nil {
 		return err
 	}
@@ -528,7 +528,7 @@ func runSandboxRefresh(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := c.RefreshSandbox(cmd.Context(), args[0], api.RefreshSandboxJSONRequestBody(api.RefreshSandboxJSONBody{
+	if err := c.RefreshSandbox(cmd.Context(), args[0], manager.RefreshSandboxJSONRequestBody(manager.RefreshSandboxJSONBody{
 		Duration: sandboxRefreshDuration,
 	})); err != nil {
 		return err
@@ -577,7 +577,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
 	// Obtain the connection credentials (a paused sandbox is resumed automatically); no sandbox TTL is set.
-	sb, err := c.ConnectSandbox(cmd.Context(), args[0], api.TimeoutOption{})
+	sb, err := c.ConnectSandbox(cmd.Context(), args[0], manager.TimeoutOption{})
 	if err != nil {
 		return err
 	}
@@ -600,7 +600,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 		Cmd:  "/bin/bash",
 		Args: []string{"-l", "-c", cmdStr},
 		Envs: envMap,
-		Cwd:  api.OptString(sandboxExecCwd),
+		Cwd:  manager.OptString(sandboxExecCwd),
 	}
 	piped := helpers.PipedStdin()
 	stream, err := pc.Start(cmd.Context(), cfg, piped)

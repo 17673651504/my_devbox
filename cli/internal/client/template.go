@@ -3,12 +3,12 @@ package client
 import (
 	"context"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 )
 
 // ListTemplates returns the latest usable build of each public template.
-func (c *Client) ListTemplates(ctx context.Context) ([]api.Template, error) {
-	resp, err := c.api.ListTemplatesWithResponse(ctx)
+func (c *Client) ListTemplates(ctx context.Context) ([]manager.Template, error) {
+	resp, err := c.manager.ListTemplatesWithResponse(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +16,7 @@ func (c *Client) ListTemplates(ctx context.Context) ([]api.Template, error) {
 		return nil, err
 	}
 	if resp.JSON200 == nil {
-		return []api.Template{}, nil
+		return []manager.Template{}, nil
 	}
 	return *resp.JSON200, nil
 }

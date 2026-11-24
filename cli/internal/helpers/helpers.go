@@ -19,8 +19,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/terminal"
@@ -63,10 +63,10 @@ func ValidateTemplateID(s string) error {
 }
 
 // ParseStates parses the repeatable --state values and validates them.
-func ParseStates(values []string) ([]api.SandboxState, error) {
-	states := make([]api.SandboxState, 0, len(values))
+func ParseStates(values []string) ([]manager.SandboxState, error) {
+	states := make([]manager.SandboxState, 0, len(values))
 	for _, s := range values {
-		st := api.SandboxState(s)
+		st := manager.SandboxState(s)
 		if !st.Valid() {
 			return nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidState), s)
 		}
@@ -115,7 +115,7 @@ func StrFromPtr(s *string) string {
 // SandboxJSON renders the sandbox as a JSON-ready map with the sensitive
 // fields (connectToken, tokenExpiration) removed, so `info -f json` never
 // leaks credentials.
-func SandboxJSON(sb *api.Sandbox) map[string]any {
+func SandboxJSON(sb *manager.Sandbox) map[string]any {
 	data, err := json.Marshal(sb)
 	if err != nil {
 		return nil
@@ -186,7 +186,7 @@ func MissingDomainError() error {
 // user and environment. A nil Probe skips stream-failure arbitration (see
 // translateSessionError).
 type TerminalSessionOptions struct {
-	Sandbox *api.Sandbox
+	Sandbox *manager.Sandbox
 	Cwd     string
 	User    string
 	Envs    map[string]string
@@ -233,7 +233,7 @@ func RunTerminalSession(ctx context.Context, msgs io.Writer, in, out *os.File, o
 // used to arbitrate transport-level stream failures, mirroring e2b's SDK which
 // follows a failed envd request with a health probe: whether the sandbox is
 // gone can only be told by asking the Manager.
-type SandboxProbe func(ctx context.Context, sandboxID string) (*api.Sandbox, error)
+type SandboxProbe func(ctx context.Context, sandboxID string) (*manager.Sandbox, error)
 
 // translateSessionError arbitrates a failed terminal/exec session. When the
 // sandbox is destroyed mid-session (TTL expiry or a kill), the gateway cuts
@@ -261,7 +261,7 @@ func translateSessionError(ctx context.Context, msgs io.Writer, sandboxID string
 		}
 		return err
 	}
-	if sb != nil && sb.State == api.Paused {
+	if sb != nil && sb.State == manager.Paused {
 		_, _ = fmt.Fprintf(msgs, i18n.T(i18n.Msg.Sandbox.SessionEndedSandboxPaused)+"\n", sandboxID)
 		return nil
 	}

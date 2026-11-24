@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 
 	"golang.org/x/term"

@@ -1,7 +1,7 @@
 // Package api provides primitives to interact with the openapi HTTP API.
 //
 // Typed client for the DevBox Manager API (originally generated from openapi.yaml by oapi-codegen, now hand-maintained).
-package api
+package manager
 
 import (
 	"bytes"

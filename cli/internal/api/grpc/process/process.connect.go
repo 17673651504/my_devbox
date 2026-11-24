@@ -1,7 +1,7 @@
 // Code copied from the sandbox-local envd contract:
 // ConchSandbox/envd (based on e2b-dev/infra), packages/envd/spec/process/process.proto.
 // It is the source of truth for the process.Process ConnectRPC service; the
-// generated Go code lives in ../processgen. Regenerate with:
+// generated Go code lives next to this file. Regenerate with:
 //
 //	go generate ./...
 

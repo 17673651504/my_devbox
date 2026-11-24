@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 )
 
@@ -18,8 +18,8 @@ import (
 // (mirrors e2b's health-check arbitration).
 func TestTranslateSessionError(t *testing.T) {
 	transportErr := fmt.Errorf("internal: protocol error: promised 1633951847 bytes: unexpected EOF")
-	probe := func(sb *api.Sandbox, err error) SandboxProbe {
-		return func(context.Context, string) (*api.Sandbox, error) { return sb, err }
+	probe := func(sb *manager.Sandbox, err error) SandboxProbe {
+		return func(context.Context, string) (*manager.Sandbox, error) { return sb, err }
 	}
 
 	cases := []struct {
@@ -31,8 +31,8 @@ func TestTranslateSessionError(t *testing.T) {
 	}{
 		{"normal exit code is never translated", &ExitCodeError{ExitCode: 2}, probe(nil, nil), false, false},
 		{"destroyed sandbox gets a notice", transportErr, probe(nil, &client.APIError{StatusCode: http.StatusNotFound}), true, true},
-		{"paused sandbox gets a notice", transportErr, probe(&api.Sandbox{State: api.Paused}, nil), true, true},
-		{"running sandbox keeps the error", transportErr, probe(&api.Sandbox{State: api.Running}, nil), false, false},
+		{"paused sandbox gets a notice", transportErr, probe(&manager.Sandbox{State: manager.Paused}, nil), true, true},
+		{"running sandbox keeps the error", transportErr, probe(&manager.Sandbox{State: manager.Running}, nil), false, false},
 		{"failed probe keeps the error", transportErr, probe(nil, fmt.Errorf("dial tcp: timeout")), false, false},
 		{"nil probe keeps the error", transportErr, nil, false, false},
 	}
@@ -56,9 +56,9 @@ func TestTranslateSessionError(t *testing.T) {
 func TestSandboxJSONRedactsSensitiveFields(t *testing.T) {
 	token := "secret-token"
 	expiration := int64(123)
-	sb := &api.Sandbox{
+	sb := &manager.Sandbox{
 		SandboxID:       "s1",
-		State:           api.Running,
+		State:           manager.Running,
 		TemplateID:      "tpl-1",
 		ConnectToken:    &token,
 		TokenExpiration: &expiration,
@@ -76,8 +76,8 @@ func TestSandboxJSONRedactsSensitiveFields(t *testing.T) {
 	if got["sandboxID"] != "s1" {
 		t.Errorf("sandboxID = %v, want s1", got["sandboxID"])
 	}
-	if got["state"] != string(api.Running) {
-		t.Errorf("state = %v, want %q", got["state"], api.Running)
+	if got["state"] != string(manager.Running) {
+		t.Errorf("state = %v, want %q", got["state"], manager.Running)
 	}
 }
 

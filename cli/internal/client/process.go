@@ -11,7 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api/processgen"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 

@@ -1,7 +1,7 @@
 // Pointer helpers for the optional fields of the oapi-codegen generated
 // request/response types. Kept next to the types they exist for.
 
-package api
+package manager
 
 // PInt returns a pointer to v as an int.
 func PInt(v int32) *int {

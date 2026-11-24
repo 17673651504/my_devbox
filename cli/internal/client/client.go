@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/huaweicloud/devspace-devbox/cli/internal/api"
+	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 
@@ -34,7 +34,7 @@ const (
 
 // Client talks to the DevBox Sandbox Manager API.
 type Client struct {
-	api *api.ClientWithResponses
+	manager *manager.ClientWithResponses
 }
 
 // Business error codes the Manager returns with HTTP 409 on connect/resume
@@ -125,10 +125,10 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if u.Host == "" {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.InvalidServerURLHost), server)
 	}
-	apiClient, err := api.NewClientWithResponses(
+	apiClient, err := manager.NewClientWithResponses(
 		server,
-		api.WithHTTPClient(httpClient),
-		api.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		manager.WithHTTPClient(httpClient),
+		manager.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 			req.Header.Set("User-Agent", UserAgent)
 			if apiKey != "" {
 				req.Header.Set(headerAPIKey, apiKey)
@@ -139,7 +139,7 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf(i18n.T(i18n.Msg.Client.CreateClientFailed), err)
 	}
-	return &Client{api: apiClient}, nil
+	return &Client{manager: apiClient}, nil
 }
 
 // checkStatus returns an *APIError derived from the DevBox error schema when
@@ -172,7 +172,7 @@ func checkStatus(resp *http.Response, body []byte) error {
 // from a DevBox error body ({"error": ..., "message": ...}), returning empty
 // strings for non-JSON bodies.
 func serverError(body []byte) (code, msg string) {
-	var e api.Error
+	var e manager.Error
 	if err := json.Unmarshal(body, &e); err == nil {
 		code, msg = e.Error, e.Message
 	}
