@@ -137,7 +137,8 @@ class SandboxConnection:
     def from_wire(cls, value: Mapping[str, Any], sandbox_id: str) -> SandboxConnection:
         """Parses a connect/create/resume payload; normalizes the envd
         endpoint to a complete HTTPS URL and fills the connect token from
-        ``connectToken`` or ``envdAccessToken``."""
+        ``connectToken`` or ``envdAccessToken``.
+        """
         domain = str(value.get("domain") or "")
         url = value.get("envdUrl")
         if not url:
@@ -360,7 +361,8 @@ class Page(Generic[T]):
 
 def parse_optional_datetime(value: object) -> datetime | None:
     """Parses a timestamp (ISO text, epoch seconds or datetime) to UTC-aware
-    :class:`datetime`; returns ``None`` for empty input."""
+    :class:`datetime`; returns ``None`` for empty input.
+    """
     if value is None or value == "":
         return None
     if isinstance(value, datetime):
