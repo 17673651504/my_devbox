@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { afterEach, describe, expect, it } from "vitest";
 import { Envd } from "../src/envd.js";
 import { Transport } from "../src/internal/transport.js";

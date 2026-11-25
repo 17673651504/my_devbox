@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 /** One structured detail entry from a DevBox API error response. */
 export interface ErrorDetail {
   code: string;

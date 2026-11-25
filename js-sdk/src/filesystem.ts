@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { readFile, writeFile } from "node:fs/promises";
 import { NotFoundError, ProtocolError } from "./errors.js";
 import type { Transport } from "./internal/transport.js";

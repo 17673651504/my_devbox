@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { Agent, type Dispatcher, fetch } from "undici";
 import {
   AuthenticationError,

@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import type { Dispatcher } from "undici";
 import { Commands } from "./commands.js";
 import { type ConnectionConfig, type DevBoxOptions, resolveConfig } from "./config.js";

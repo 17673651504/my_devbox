@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import type { Transport } from "./internal/transport.js";
 import { objectValue, stringRecord } from "./internal/wire.js";
 import { type EnvdHealth, type EnvdMetrics, parseEnvdMetrics } from "./models.js";

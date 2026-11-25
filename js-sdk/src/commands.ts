@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { Buffer } from "node:buffer";
 import { CommandExitError, ConfigurationError, ProtocolError } from "./errors.js";
 import type { ConnectStream, Transport } from "./internal/transport.js";

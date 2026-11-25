@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import type { MockAgent } from "undici";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Commands } from "../src/commands.js";

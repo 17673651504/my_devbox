@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import type { Commands } from "./commands.js";
 import type { CommandResult } from "./models.js";
 

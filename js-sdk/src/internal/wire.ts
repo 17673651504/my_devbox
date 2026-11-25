@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { ProtocolError } from "../errors.js";
 
 export type WireObject = Record<string, unknown>;

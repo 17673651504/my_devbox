@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { describe, expect, it } from "vitest";
 import { resolveConfig } from "../src/config.js";
 import { ConfigurationError } from "../src/errors.js";

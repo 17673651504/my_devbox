@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 import { ReadableStream } from "node:stream/web";
 import { type MockAgent, Response } from "undici";
 import { afterEach, describe, expect, it, vi } from "vitest";
