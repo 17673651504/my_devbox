@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 // Package client is a thin, hand-reviewed wrapper around the generated
 // client (internal/api). It centralizes authentication, error
 // decoding and pagination meta-headers so that the CLI layers stay focused on

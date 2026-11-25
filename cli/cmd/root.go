@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 // Package cmd defines the cobra command tree for the devbox CLI.
 //
 // Each command is a package-level var (eg. loginCmd), registered to its parent via AddCommand in each file's init().
@@ -11,14 +15,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/huaweicloud/devspace-devbox/cli/internal/auth"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/config"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
-
-	"github.com/spf13/cobra"
 )
 
 // Version is injected via -ldflags "-X .../cmd.Version=...".

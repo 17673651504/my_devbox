@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 // Package terminal wires the local terminal to a sandbox PTY: it puts the local
 // terminal into raw mode, forwards keystrokes to the remote process and
 // renders remote output locally, like an SSH session.

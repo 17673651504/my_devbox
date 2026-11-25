@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 package cmd
 
 import (
@@ -5,11 +9,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/huaweicloud/devspace-devbox/cli/internal/auth"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/config"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
-
-	"github.com/spf13/cobra"
 )
 
 // authCmd implements `devbox auth`.

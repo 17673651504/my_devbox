@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 package i18n
 
 func init() {
@@ -8,8 +12,11 @@ func init() {
 				EN: "command-line client for the DevBox sandbox manager",
 			},
 			RootLong: Message{
-				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。",
-				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\nIt covers the full sandbox lifecycle (create, list, info, kill, pause,\nresume, connect, exec) and templates.",
+				ZH: "devbox 是 DevBox 沙箱管理器的命令行客户端。\n\n" +
+					"覆盖完整的沙箱生命周期（创建、列表、信息、终止、暂停、恢复、连接终端、执行命令）与模板。",
+				EN: "devbox is a command-line client for the DevBox Sandbox Manager API.\n\n" +
+					"It covers the full sandbox lifecycle (create, list, info, kill, pause, " +
+					"resume, connect, exec) and templates.",
 			},
 			FlagVerbose: Message{
 				ZH: "打印调试日志（含接口请求/返回）",
@@ -26,8 +33,17 @@ func init() {
 				EN: "log in to CLI",
 			},
 			LoginLong: Message{
-				ZH: "登录 DevBox 沙箱管理器。\n\nAPI Key 的解析顺序：\n  1. --api-key 旗标（校验后存储）\n  2. 已存储的 API Key（OS keyring 或配置文件，环境变量优先，校验后复用）\n  3. 浏览器登录（对配置的登录页）",
-				EN: "Log in to the DevBox sandbox manager.\n\nThe API key is resolved in this order:\n  1. the --api-key flag (verified and stored)\n  2. a key already stored in the OS keyring or config file (environment variable preferred, verified)\n  3. an interactive browser login against the configured login page",
+				ZH: "登录 DevBox 沙箱管理器。\n\n" +
+					"API Key 的解析顺序：\n" +
+					"  1. --api-key 旗标（校验后存储）\n" +
+					"  2. 已存储的 API Key（OS keyring 或配置文件，环境变量优先，校验后复用）\n" +
+					"  3. 浏览器登录（对配置的登录页）",
+				EN: "Log in to the DevBox sandbox manager.\n\n" +
+					"The API key is resolved in this order:\n" +
+					"  1. the --api-key flag (verified and stored)\n" +
+					"  2. a key already stored in the OS keyring or config file " +
+					"(environment variable preferred, verified)\n" +
+					"  3. an interactive browser login against the configured login page",
 			},
 			LoginFailed: Message{
 				ZH: "登录失败：",
@@ -99,7 +115,8 @@ func init() {
 			},
 			NoBrowserHint: Message{
 				ZH: "无可用浏览器，请手动登录。API Key 管理页面: %s\n例如: ./devbox auth login --api-key=YOUR_API_KEY",
-				EN: "No browser available, please login manually. API key management page: %s\nFor example: ./devbox auth login --api-key=YOUR_API_KEY",
+				EN: "No browser available, please login manually. " +
+					"API key management page: %s\nFor example: ./devbox auth login --api-key=YOUR_API_KEY",
 			},
 			BindCallbackServer: Message{
 				ZH: "绑定登录回调服务器失败：%w",
@@ -115,7 +132,9 @@ func init() {
 			},
 			CallbackBizError: Message{
 				ZH: "登录失败: %s: %s\n请前往管理页面删除 API Key 后重试。API Key 管理页面： %s",
-				EN: "Login failed: %s: %s\nPlease go to the management page to delete API keys and try again. API key management page: %s",
+				EN: "Login failed: %s: %s\n" +
+					"Please go to the management page to delete API keys and try again. " +
+					"API key management page: %s",
 			},
 			CallbackForbidden: Message{
 				ZH: "来源校验失败",
@@ -201,7 +220,8 @@ func init() {
 			},
 			InvalidTemplateID: Message{
 				ZH: "模板 ID %q 无效（须为不超过 64 位的小写字母、数字和中划线，且不能为空）",
-				EN: "invalid template ID %q (must be at most 64 characters of lowercase letters, digits and hyphens, and must not be empty)",
+				EN: "invalid template ID %q (must be at most 64 characters of lowercase letters, " +
+					"digits and hyphens, and must not be empty)",
 			},
 			InfoShort: Message{
 				ZH: "查看沙箱信息",
@@ -280,8 +300,13 @@ func init() {
 				EN: "execute a command in a running sandbox",
 			},
 			ExecLong: Message{
-				ZH: "在运行中的沙箱里执行命令。\n\nsandbox ID 之后的全部内容透传给远程命令，devbox 选项必须放在 sandbox ID 之前：\n\n  devbox sbx exec -c /tmp <sandboxID> codex exec \"prompt\" --help",
-				EN: "Execute a command in a running sandbox.\n\nEverything after the sandbox ID is passed through to the remote command,\nso devbox options must come before the sandbox ID:\n\n  devbox sbx exec -c /tmp <sandboxID> codex exec \"prompt\" --help",
+				ZH: "在运行中的沙箱里执行命令。\n\n" +
+					"sandbox ID 之后的全部内容透传给远程命令，devbox 选项必须放在 sandbox ID 之前：\n\n" +
+					"  devbox sbx exec -c /tmp <sandboxID> codex exec \"prompt\" --help",
+				EN: "Execute a command in a running sandbox.\n\n" +
+					"Everything after the sandbox ID is passed through to the remote command,\n" +
+					"so devbox options must come before the sandbox ID:\n\n" +
+					"  devbox sbx exec -c /tmp <sandboxID> codex exec \"prompt\" --help",
 			},
 			NoProcessID: Message{
 				ZH: "沙箱未返回进程 ID",
@@ -381,11 +406,13 @@ func init() {
 			},
 			TunnelExpired: Message{
 				ZH: "沙箱 %s 的原隧道已过期，重复连接不会恢复原地址；请联系支持，或销毁后重建沙箱",
-				EN: "the tunnel for sandbox %s has expired - reconnecting will not restore the original address; contact support or recreate the sandbox",
+				EN: "the tunnel for sandbox %s has expired - reconnecting will not restore " +
+					"the original address; contact support or recreate the sandbox",
 			},
 			TunnelValidityInsufficient: Message{
 				ZH: "隧道剩余有效期不足以覆盖请求的运行时长（含 5 分钟余量）；可缩短 --timeout 后重试",
-				EN: "the tunnel's remaining validity cannot cover the requested runtime plus a 5-minute margin; try a shorter --timeout and retry",
+				EN: "the tunnel's remaining validity cannot cover the requested runtime " +
+					"plus a 5-minute margin; try a shorter --timeout and retry",
 			},
 			FlagState: Message{
 				ZH: "按状态过滤: running 或 paused（可重复）",

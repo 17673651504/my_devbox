@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 // Package auth implements credential storage, validation and browser-based
 // login for the devbox CLI.
 //
@@ -286,8 +290,9 @@ func apikeyPageURL() string {
 	return strings.TrimRight(config.LoginURL, "/") + config.ApikeyPagePath
 }
 
-// BrowserLogin opens the login page, waits for the API key callback and stores the credentials after verification. Both the login page
-// and the check address come from the build-time config (config.LoginURL / config.DefaultServer).
+// BrowserLogin opens the login page, waits for the API key callback and stores
+// the credentials after verification. Both the login page and the check address
+// come from the build-time config (config.LoginURL / config.DefaultServer).
 func BrowserLogin(ctx context.Context) error {
 	loginBase := config.LoginURL
 	if loginBase == "" {

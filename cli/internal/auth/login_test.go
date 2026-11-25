@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 package auth
 
 import (
@@ -128,7 +132,8 @@ func TestStartLoginWithNestedResult(t *testing.T) {
 	u, _ := url.Parse(session.URL)
 	port := u.Query().Get("callback")
 	postCallback(t, port, "https://devstation.connect.huaweicloud.com",
-		`{"error_code":"0000","error_msg":"success","result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
+		`{"error_code":"0000","error_msg":"success",`+
+			`"result":{"apiKey":"nested-key-9","userName":"hw067826022","userId":"u-2"}}`)
 
 	cred, ui, err := session.Wait(context.Background())
 	if err != nil {

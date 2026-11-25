@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2027. All rights reserved.
+ */
+
 package cmd
 
 import (
@@ -6,15 +10,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api/rest/manager"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/helpers"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/output"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 // sandboxCmd implements `devbox sandbox`.
@@ -77,7 +81,6 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
 	// Aligned with e2b: -e only sets the terminal session's environment variables (sandbox-level envVars are not written).
-
 	if cmd.Flags().Changed("lifecycle.ontimeout") {
 		ot := manager.SandboxLifecycleOnTimeout(sandboxCreateOnTimeout)
 		if !ot.Valid() {
@@ -108,13 +111,14 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Default: open the interactive terminal.
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
-		Sandbox: sb,
-		Cwd:     sandboxCreateCwd,
-		User:    sandboxCreateUser,
-		Envs:    envMap,
-		Probe:   c.GetSandbox,
-	})
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout,
+		helpers.TerminalSessionOptions{
+			Sandbox: sb,
+			Cwd:     sandboxCreateCwd,
+			User:    sandboxCreateUser,
+			Envs:    envMap,
+			Probe:   c.GetSandbox,
+		})
 }
 
 // sandboxListCmd's flag bound variables.
@@ -203,9 +207,12 @@ func runSandboxList(cmd *cobra.Command, _ []string) error {
 		})
 	}
 	return output.Print(cmd.OutOrStdout(), out(cmd), output.Spec{
-		JSON:    jsonSandboxes,
-		Headers: []string{"SANDBOX ID", "TEMPLATE ID", "STARTED AT", "END AT", "STATE", "VCPUS", "RAM(MB)", "DISK(MB)", "METADATA"},
-		Rows:    rows,
+		JSON: jsonSandboxes,
+		Headers: []string{
+			"SANDBOX ID", "TEMPLATE ID", "STARTED AT", "END AT",
+			"STATE", "VCPUS", "RAM(MB)", "DISK(MB)", "METADATA",
+		},
+		Rows: rows,
 	})
 }
 
@@ -389,7 +396,9 @@ func translateTunnelError(err error, sandboxID string) error {
 // the commands that establish a session: with -t omitted the timeout field is
 // not sent (the sandbox keeps its current TTL); an explicit value is validated
 // and set.
-func prepareSandboxRef(cmd *cobra.Command, args []string, timeoutValue int32) (*client.Client, manager.TimeoutOption, error) {
+func prepareSandboxRef(
+	cmd *cobra.Command, args []string, timeoutValue int32,
+) (*client.Client, manager.TimeoutOption, error) {
 	if err := helpers.ValidateSandboxID(args[0]); err != nil {
 		return nil, manager.TimeoutOption{}, err
 	}
@@ -456,13 +465,14 @@ func runSandboxConnect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout, helpers.TerminalSessionOptions{
-		Sandbox: sb,
-		Cwd:     sandboxConnectCwd,
-		User:    sandboxConnectUser,
-		Envs:    envMap,
-		Probe:   c.GetSandbox,
-	})
+	return helpers.RunTerminalSession(cmd.Context(), cmd.OutOrStdout(), os.Stdin, os.Stdout,
+		helpers.TerminalSessionOptions{
+			Sandbox: sb,
+			Cwd:     sandboxConnectCwd,
+			User:    sandboxConnectUser,
+			Envs:    envMap,
+			Probe:   c.GetSandbox,
+		})
 }
 
 // sandboxTimeoutCmd's flag bound variables.
@@ -528,9 +538,9 @@ func runSandboxRefresh(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := c.RefreshSandbox(cmd.Context(), args[0], manager.RefreshSandboxJSONRequestBody(manager.RefreshSandboxJSONBody{
-		Duration: sandboxRefreshDuration,
-	})); err != nil {
+	if err := c.RefreshSandbox(cmd.Context(), args[0], manager.RefreshSandboxJSONRequestBody(
+		manager.RefreshSandboxJSONBody{Duration: sandboxRefreshDuration},
+	)); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.Refreshed)+"\n", args[0], sandboxRefreshDuration)
@@ -645,7 +655,8 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagNetworkPublic))
 	sandboxCreateCmd.Flags().BoolVarP(&sandboxCreateDetach, "detach", "d", false,
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
-	addSessionFlags(sandboxCreateCmd.Flags(), &sandboxCreateCwd, &sandboxCreateEnv, i18n.Msg.Sandbox.FlagEnvSession, &sandboxCreateUser)
+	addSessionFlags(sandboxCreateCmd.Flags(), &sandboxCreateCwd, &sandboxCreateEnv,
+		i18n.Msg.Sandbox.FlagEnvSession, &sandboxCreateUser)
 
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
@@ -674,7 +685,8 @@ func init() {
 
 	sandboxConnectCmd.Flags().Int32VarP(&sandboxConnectTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
-	addSessionFlags(sandboxConnectCmd.Flags(), &sandboxConnectCwd, &sandboxConnectEnv, i18n.Msg.Sandbox.FlagEnvTerm, &sandboxConnectUser)
+	addSessionFlags(sandboxConnectCmd.Flags(), &sandboxConnectCwd, &sandboxConnectEnv,
+		i18n.Msg.Sandbox.FlagEnvTerm, &sandboxConnectUser)
 
 	sandboxTimeoutCmd.Flags().Int32VarP(&sandboxTimeoutValue, "timeout", "t", 300,
 		i18n.T(i18n.Msg.Sandbox.FlagNewTimeout))
