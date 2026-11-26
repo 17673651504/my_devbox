@@ -37,7 +37,10 @@ func (c *Client) ListSandboxes(ctx context.Context, params *manager.ListSandboxe
 }
 
 // CreateSandbox creates a sandbox from a template.
-func (c *Client) CreateSandbox(ctx context.Context, body manager.CreateSandboxJSONRequestBody) (*manager.Sandbox, error) {
+func (c *Client) CreateSandbox(
+	ctx context.Context,
+	body manager.CreateSandboxJSONRequestBody,
+) (*manager.Sandbox, error) {
 	resp, err := c.manager.CreateSandboxWithResponse(ctx, body)
 	if err != nil {
 		return nil, err
@@ -85,7 +88,11 @@ func (c *Client) PauseSandbox(ctx context.Context, sandboxID string) error {
 }
 
 // ResumeSandbox resumes a paused sandbox.
-func (c *Client) ResumeSandbox(ctx context.Context, sandboxID string, body manager.ResumeSandboxJSONRequestBody) (*manager.Sandbox, error) {
+func (c *Client) ResumeSandbox(
+	ctx context.Context,
+	sandboxID string,
+	body manager.ResumeSandboxJSONRequestBody,
+) (*manager.Sandbox, error) {
 	resp, err := c.manager.ResumeSandboxWithResponse(ctx, sandboxID, body)
 	if err != nil {
 		return nil, err
@@ -100,7 +107,11 @@ func (c *Client) ResumeSandbox(ctx context.Context, sandboxID string, body manag
 }
 
 // ConnectSandbox returns sandbox details, resuming it if paused.
-func (c *Client) ConnectSandbox(ctx context.Context, sandboxID string, body manager.ConnectSandboxJSONRequestBody) (*manager.Sandbox, error) {
+func (c *Client) ConnectSandbox(
+	ctx context.Context,
+	sandboxID string,
+	body manager.ConnectSandboxJSONRequestBody,
+) (*manager.Sandbox, error) {
 	resp, err := c.manager.ConnectSandboxWithResponse(ctx, sandboxID, body)
 	if err != nil {
 		return nil, err
@@ -118,7 +129,11 @@ func (c *Client) ConnectSandbox(ctx context.Context, sandboxID string, body mana
 }
 
 // SetSandboxTimeout sets the time-to-live of a sandbox.
-func (c *Client) SetSandboxTimeout(ctx context.Context, sandboxID string, body manager.SetSandboxTimeoutJSONRequestBody) error {
+func (c *Client) SetSandboxTimeout(
+	ctx context.Context,
+	sandboxID string,
+	body manager.SetSandboxTimeoutJSONRequestBody,
+) error {
 	resp, err := c.manager.SetSandboxTimeoutWithResponse(ctx, sandboxID, body)
 	if err != nil {
 		return err
@@ -127,7 +142,11 @@ func (c *Client) SetSandboxTimeout(ctx context.Context, sandboxID string, body m
 }
 
 // RefreshSandbox extends the sandbox time-to-live.
-func (c *Client) RefreshSandbox(ctx context.Context, sandboxID string, body manager.RefreshSandboxJSONRequestBody) error {
+func (c *Client) RefreshSandbox(
+	ctx context.Context,
+	sandboxID string,
+	body manager.RefreshSandboxJSONRequestBody,
+) error {
 	resp, err := c.manager.RefreshSandboxWithResponse(ctx, sandboxID, body)
 	if err != nil {
 		return err

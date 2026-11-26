@@ -156,6 +156,9 @@ var sandboxListCmd = &cobra.Command{
 // sandboxListLimitMax is the API upper bound for the list limit parameter.
 const sandboxListLimitMax = 1000
 
+// sandboxListDefaultLimit is the default --limit value for sandbox list.
+const sandboxListDefaultLimit int32 = 100
+
 // defaultSandboxTimeout is the default TTL in seconds for sandbox create and
 // timeout commands (aligned with the service default).
 const defaultSandboxTimeout = 300
@@ -753,7 +756,7 @@ func registerSandboxListFlags() {
 		i18n.T(i18n.Msg.Sandbox.FlagOrder))
 	sandboxListCmd.Flags().StringSliceVarP(&sandboxListStates, "state", "s", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagState))
-	sandboxListCmd.Flags().Int32VarP(&sandboxListLimit, "limit", "l", 100,
+	sandboxListCmd.Flags().Int32VarP(&sandboxListLimit, "limit", "l", sandboxListDefaultLimit,
 		i18n.T(i18n.Msg.Sandbox.FlagLimit))
 	sandboxListCmd.Flags().StringVarP(&sandboxListFormat, "format", "f", "pretty",
 		i18n.T(i18n.Msg.Sandbox.FlagFormat))

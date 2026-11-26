@@ -16,6 +16,9 @@ import (
 	"github.com/huaweicloud/devspace-devbox/cli/internal/i18n"
 )
 
+// authStatusVerifyTimeout bounds the API-key verification in `devbox auth status`.
+const authStatusVerifyTimeout = 15 * time.Second
+
 // authCmd implements `devbox auth`.
 var authCmd = &cobra.Command{
 	Use:   "auth",
@@ -85,7 +88,7 @@ var statusCmd = &cobra.Command{
 			return nil
 		}
 
-		ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(cmd.Context(), authStatusVerifyTimeout)
 		defer cancel()
 		if err := auth.VerifyAPIKey(ctx, config.DefaultServer, cred.APIKey); err != nil {
 			if auth.IsUnauthorized(err) {

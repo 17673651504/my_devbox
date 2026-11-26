@@ -105,9 +105,9 @@ func (e *UpgradeRequiredError) Error() string {
 	return fmt.Sprintf("\n%s\n%s\n%s\n", msg, i18n.T(i18n.Msg.Client.UpdateLabel), installCommands())
 }
 
-// defaultHTTPTimeout is the fallback timeout when the caller provides no
-// http.Client.
-const defaultHTTPTimeout = 30 * time.Second
+// DefaultHTTPTimeout is the default Manager API timeout. It is also the
+// fallback when the caller provides no http.Client.
+const DefaultHTTPTimeout = 30 * time.Second
 
 // maxErrorExcerpt bounds the error excerpt echoed for non-JSON bodies.
 const maxErrorExcerpt = 512
@@ -116,7 +116,7 @@ const maxErrorExcerpt = 512
 // apiKey skips the auth header.
 func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: defaultHTTPTimeout}
+		httpClient = &http.Client{Timeout: DefaultHTTPTimeout}
 	}
 	if httpClient.Transport == nil {
 		httpClient.Transport = http.DefaultTransport
@@ -156,7 +156,7 @@ func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 // checkStatus returns an *APIError derived from the DevBox error schema when
 // the HTTP response is not a 2xx. A 426 response maps to UpgradeRequiredError.
 func checkStatus(resp *http.Response, body []byte) error {
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
 		return nil
 	}
 
