@@ -17,9 +17,13 @@ describe('Commands', () => {
   afterEach(async () => agent?.close());
 
   it('infers run results for literal and dynamic options', () => {
-    const foreground = (commands: Commands) => commands.run('true');
-    const background = (commands: Commands) => commands.run('true', { background: true });
-    const dynamic = (commands: Commands, options: RunOptions) => commands.run('true', options);
+    const foreground = (commands: Commands): Promise<CommandResult> => commands.run('true');
+    const background = (commands: Commands): Promise<CommandHandle> =>
+      commands.run('true', { background: true });
+    const dynamic = (
+      commands: Commands,
+      options: RunOptions,
+    ): Promise<CommandResult | CommandHandle> => commands.run('true', options);
 
     expectTypeOf(foreground).returns.toEqualTypeOf<Promise<CommandResult>>();
     expectTypeOf(background).returns.toEqualTypeOf<Promise<CommandHandle>>();

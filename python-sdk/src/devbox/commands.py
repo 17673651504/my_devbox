@@ -575,16 +575,6 @@ class _OutputCollector:
             self._exit_code = int(end.get("exitCode", end.get("exit_code", 0)))
         return tuple(chunks)
 
-    def _collect_stream(self, data: Mapping[str, Any], stream: str) -> list[OutputChunk]:
-        if stream not in data:
-            return []
-        target = "stdout" if stream == "pty" else stream
-        value = self._decode(target, data[stream])
-        if not value:
-            return []
-        self._append(target, value)
-        return [OutputChunk(stream=target, data=value)]
-
     def result(self) -> CommandResult:
         self._flush()
         if self._exit_code is None:
@@ -621,6 +611,16 @@ class _OutputCollector:
             self._stderr.append(data)
             if self._on_stderr:
                 self._on_stderr(data)
+
+    def _collect_stream(self, data: Mapping[str, Any], stream: str) -> list[OutputChunk]:
+        if stream not in data:
+            return []
+        target = "stdout" if stream == "pty" else stream
+        value = self._decode(target, data[stream])
+        if not value:
+            return []
+        self._append(target, value)
+        return [OutputChunk(stream=target, data=value)]
 
 
 def _command_body(

@@ -44,7 +44,7 @@ export class ConnectStream implements AsyncIterable<WireObject> {
   readonly #onClose: () => void;
   #closed = false;
 
-  constructor(open: () => Promise<FetchResponse>, onClose: () => void = () => {}) {
+  constructor(open: () => Promise<FetchResponse>, onClose: () => void = (): void => {}) {
     this.#open = open;
     this.#onClose = onClose;
   }

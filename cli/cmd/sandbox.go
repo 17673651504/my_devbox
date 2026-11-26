@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -53,6 +54,49 @@ var sandboxCreateCmd = &cobra.Command{
 	RunE:    runError(runSandboxCreate),
 }
 
+// buildCreateRequest validates the create flags and assembles the Manager
+// request. envMap holds the terminal session environment parsed from -e.
+func buildCreateRequest(cmd *cobra.Command, templateID string) (manager.NewSandbox, map[string]string, error) {
+	req := manager.NewSandbox{TemplateID: templateID}
+	if cmd.Flags().Changed("timeout") {
+		if err := helpers.ValidateTimeoutSeconds(sandboxCreateTimeout); err != nil {
+			return req, nil, err
+		}
+		req.Timeout = manager.PInt32(sandboxCreateTimeout)
+	}
+	if cmd.Flags().Changed("build-id") {
+		req.BuildID = manager.PString(sandboxCreateBuildID)
+	}
+	metadata, err := helpers.ParseMetadata(sandboxCreateMetadata)
+	if err != nil {
+		return req, nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidMetadata), err)
+	}
+	req.Metadata = metadata
+	envMap, err := helpers.ParseKV(sandboxCreateEnv)
+	if err != nil {
+		return req, nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
+	}
+	// Aligned with e2b: -e only sets the terminal session's environment variables (sandbox-level envVars are not written).
+	if cmd.Flags().Changed("lifecycle.ontimeout") {
+		ot := manager.SandboxLifecycleOnTimeout(sandboxCreateOnTimeout)
+		if !ot.Valid() {
+			return req, nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOnTimeout), sandboxCreateOnTimeout)
+		}
+		if sandboxCreateAutoResume && sandboxCreateOnTimeout != string(manager.Pause) {
+			return req, nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
+		}
+		req.Lifecycle = &manager.SandboxLifecycle{OnTimeout: ot, AutoResume: sandboxCreateAutoResume}
+	} else if cmd.Flags().Changed("lifecycle.autoresume") {
+		return req, nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
+	}
+
+	// Only submitted when the user explicitly passes the flag; omitted otherwise.
+	if cmd.Flags().Changed("network.allow-public-traffic") {
+		req.Network = &manager.SandboxNetwork{AllowPublicTraffic: sandboxCreateNetworkAllowPublic}
+	}
+	return req, envMap, nil
+}
+
 // runSandboxCreate validates the input, creates the sandbox and opens the
 // interactive terminal unless --detach is given.
 func runSandboxCreate(cmd *cobra.Command, args []string) error {
@@ -63,42 +107,10 @@ func runSandboxCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req := manager.NewSandbox{TemplateID: args[0]}
-	if cmd.Flags().Changed("timeout") {
-		if err := helpers.ValidateTimeoutSeconds(sandboxCreateTimeout); err != nil {
-			return err
-		}
-		req.Timeout = manager.PInt32(sandboxCreateTimeout)
-	}
-	if cmd.Flags().Changed("build-id") {
-		req.BuildID = manager.PString(sandboxCreateBuildID)
-	}
-	if req.Metadata, err = helpers.ParseMetadata(sandboxCreateMetadata); err != nil {
-		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidMetadata), err)
-	}
-	envMap, err := helpers.ParseKV(sandboxCreateEnv)
+	req, envMap, err := buildCreateRequest(cmd, args[0])
 	if err != nil {
-		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
+		return err
 	}
-	// Aligned with e2b: -e only sets the terminal session's environment variables (sandbox-level envVars are not written).
-	if cmd.Flags().Changed("lifecycle.ontimeout") {
-		ot := manager.SandboxLifecycleOnTimeout(sandboxCreateOnTimeout)
-		if !ot.Valid() {
-			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOnTimeout), sandboxCreateOnTimeout)
-		}
-		if sandboxCreateAutoResume && sandboxCreateOnTimeout != string(manager.Pause) {
-			return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
-		}
-		req.Lifecycle = &manager.SandboxLifecycle{OnTimeout: ot, AutoResume: sandboxCreateAutoResume}
-	} else if cmd.Flags().Changed("lifecycle.autoresume") {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.AutoResumeRequires))
-	}
-
-	// Only submitted when the user explicitly passes the flag; omitted otherwise.
-	if cmd.Flags().Changed("network.allow-public-traffic") {
-		req.Network = &manager.SandboxNetwork{AllowPublicTraffic: sandboxCreateNetworkAllowPublic}
-	}
-
 	sb, err := c.CreateSandbox(cmd.Context(), req)
 	if err != nil {
 		return err
@@ -305,6 +317,48 @@ var sandboxKillCmd = &cobra.Command{
 	RunE:    runError(runSandboxKill),
 }
 
+// resolveKillTargets returns the sandbox IDs to delete: the explicit args, or
+// with --all a full listing filtered by state/metadata (the state defaults to
+// running). The two targeting modes are mutually exclusive.
+func resolveKillTargets(cmd *cobra.Command, c *client.Client, args []string) ([]string, error) {
+	if !sandboxKillAll {
+		if len(args) == 0 {
+			return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillRequiresArgs))
+		}
+		return args, nil
+	}
+	if len(args) > 0 {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillAllConflict))
+	}
+	states := []manager.SandboxState{manager.Running}
+	if cmd.Flags().Changed("state") {
+		parsed, err := helpers.ParseStates(sandboxKillState)
+		if err != nil {
+			return nil, err
+		}
+		states = parsed
+	}
+	params := &manager.ListSandboxesParams{
+		State:    &states,
+		Metadata: manager.OptString(sandboxKillMetadata),
+	}
+	var ids []string
+	for {
+		res, listErr := c.ListSandboxes(cmd.Context(), params)
+		if listErr != nil {
+			return nil, listErr
+		}
+		for _, sb := range res.Sandboxes {
+			ids = append(ids, sb.SandboxID)
+		}
+		if res.NextToken == "" {
+			break
+		}
+		params.NextToken = manager.PString(res.NextToken)
+	}
+	return ids, nil
+}
+
 // runSandboxKill resolves the target sandbox IDs (explicit args or --all
 // filtered by state/metadata) and deletes them one by one.
 func runSandboxKill(cmd *cobra.Command, args []string) error {
@@ -312,40 +366,9 @@ func runSandboxKill(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	ids := args
-	if sandboxKillAll {
-		if len(ids) > 0 {
-			return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillAllConflict))
-		}
-		// List by state/metadata then kill each; the state defaults to running.
-		states := []manager.SandboxState{manager.Running}
-		if cmd.Flags().Changed("state") {
-			parsed, err := helpers.ParseStates(sandboxKillState)
-			if err != nil {
-				return err
-			}
-			states = parsed
-		}
-		params := &manager.ListSandboxesParams{
-			State:    &states,
-			Metadata: manager.OptString(sandboxKillMetadata),
-		}
-		for {
-			res, listErr := c.ListSandboxes(cmd.Context(), params)
-			if listErr != nil {
-				return listErr
-			}
-			for _, sb := range res.Sandboxes {
-				ids = append(ids, sb.SandboxID)
-			}
-			if res.NextToken == "" {
-				break
-			}
-			params.NextToken = manager.PString(res.NextToken)
-		}
-	} else if len(ids) == 0 {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.KillRequiresArgs))
+	ids, err := resolveKillTargets(cmd, c, args)
+	if err != nil {
+		return err
 	}
 
 	for _, id := range ids {
@@ -417,8 +440,9 @@ func translateTunnelError(err error, sandboxID string) error {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.TunnelExpired), sandboxID)
 	case client.TunnelValidityInsufficientCode:
 		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.TunnelValidityInsufficient))
+	default:
+		return err
 	}
-	return err
 }
 
 // prepareSandboxRef validates the sandbox id and builds the timeout option for
@@ -597,6 +621,30 @@ var sandboxExecCmd = &cobra.Command{
 	RunE:    runError(runSandboxExec),
 }
 
+// connectForExec obtains the connection credentials for exec (a paused sandbox
+// is resumed automatically; no sandbox TTL is set) and builds the process
+// client for the given sandbox user.
+func connectForExec(
+	ctx context.Context, c *client.Client, sandboxID string, user string,
+) (*client.ProcessClient, error) {
+	sb, err := c.ConnectSandbox(ctx, sandboxID, manager.TimeoutOption{})
+	if err != nil {
+		return nil, err
+	}
+	if sb.Domain == nil || *sb.Domain == "" {
+		return nil, helpers.MissingDomainError()
+	}
+	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
+		return nil, fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
+	}
+	return client.NewProcessClient(client.SandboxConnection{
+		Domain:       *sb.Domain,
+		SandboxID:    sandboxID,
+		ConnectToken: *sb.ConnectToken,
+		User:         user,
+	}, nil)
+}
+
 // runSandboxExec runs a remote command inside the sandbox via
 // /bin/bash -l -c and returns the remote exit code as the local exit code.
 func runSandboxExec(cmd *cobra.Command, args []string) error {
@@ -615,23 +663,7 @@ func runSandboxExec(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidEnv), err)
 	}
-	// Obtain the connection credentials (a paused sandbox is resumed automatically); no sandbox TTL is set.
-	sb, err := c.ConnectSandbox(cmd.Context(), args[0], manager.TimeoutOption{})
-	if err != nil {
-		return err
-	}
-	if sb.Domain == nil || *sb.Domain == "" {
-		return helpers.MissingDomainError()
-	}
-	if sb.ConnectToken == nil || *sb.ConnectToken == "" {
-		return fmt.Errorf("%s", i18n.T(i18n.Msg.Sandbox.MissingConnectToken))
-	}
-	pc, err := client.NewProcessClient(client.SandboxConnection{
-		Domain:       *sb.Domain,
-		SandboxID:    args[0],
-		ConnectToken: *sb.ConnectToken,
-		User:         sandboxExecUser,
-	}, nil)
+	pc, err := connectForExec(cmd.Context(), c, args[0], sandboxExecUser)
 	if err != nil {
 		return err
 	}
@@ -670,6 +702,27 @@ func addSessionFlags(flags *pflag.FlagSet, cwd *string, env *[]string, envUsage 
 }
 
 func init() {
+	registerSandboxCreateFlags()
+	registerSandboxListFlags()
+	registerSandboxKillFlags()
+	registerSandboxSessionFlags()
+	registerSandboxExecFlags()
+	sandboxCmd.AddCommand(
+		sandboxCreateCmd,
+		sandboxListCmd,
+		sandboxInfoCmd,
+		sandboxKillCmd,
+		sandboxPauseCmd,
+		sandboxResumeCmd,
+		sandboxConnectCmd,
+		sandboxExecCmd,
+		sandboxTimeoutCmd,
+		sandboxRefreshCmd,
+	)
+}
+
+// registerSandboxCreateFlags registers the `sandbox create` flag set.
+func registerSandboxCreateFlags() {
 	sandboxCreateCmd.Flags().Int32VarP(&sandboxCreateTimeout, "timeout", "t", defaultSandboxTimeout,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeout))
 	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateMetadata, "metadata", "m", nil,
@@ -686,7 +739,10 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagDetach))
 	addSessionFlags(sandboxCreateCmd.Flags(), &sandboxCreateCwd, &sandboxCreateEnv,
 		i18n.Msg.Sandbox.FlagEnvSession, &sandboxCreateUser)
+}
 
+// registerSandboxListFlags registers the `sandbox list` flag set.
+func registerSandboxListFlags() {
 	sandboxListCmd.Flags().StringVarP(&sandboxListMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagMetadataFilter))
 	sandboxListCmd.Flags().StringVarP(&sandboxListTemplate, "template", "t", "",
@@ -701,14 +757,21 @@ func init() {
 		i18n.T(i18n.Msg.Sandbox.FlagLimit))
 	sandboxListCmd.Flags().StringVarP(&sandboxListFormat, "format", "f", "pretty",
 		i18n.T(i18n.Msg.Sandbox.FlagFormat))
+}
 
+// registerSandboxKillFlags registers the `sandbox kill` flag set.
+func registerSandboxKillFlags() {
 	sandboxKillCmd.Flags().BoolVarP(&sandboxKillAll, "all", "a", false,
 		i18n.T(i18n.Msg.Sandbox.FlagKillAll))
 	sandboxKillCmd.Flags().StringSliceVarP(&sandboxKillState, "state", "s", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagKillState))
 	sandboxKillCmd.Flags().StringVarP(&sandboxKillMetadata, "metadata", "m", "",
 		i18n.T(i18n.Msg.Sandbox.FlagKillMetadata))
+}
 
+// registerSandboxSessionFlags registers the flag sets of the remaining sandbox
+// lifecycle and session commands.
+func registerSandboxSessionFlags() {
 	sandboxResumeCmd.Flags().Int32VarP(&sandboxResumeTimeout, "timeout", "t", 0,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeoutKeep))
 
@@ -724,23 +787,13 @@ func init() {
 
 	sandboxRefreshCmd.Flags().Int32VarP(&sandboxRefreshDuration, "duration", "d", defaultSandboxTimeout,
 		i18n.T(i18n.Msg.Sandbox.FlagDuration))
+}
 
+// registerSandboxExecFlags registers the `sbx exec` flag set.
+func registerSandboxExecFlags() {
 	sandboxExecCmd.Flags().BoolVarP(&sandboxExecBackground, "background", "b", false,
 		i18n.T(i18n.Msg.Sandbox.FlagBackground))
 	addSessionFlags(sandboxExecCmd.Flags(), &sandboxExecCwd, &sandboxExecEnv, i18n.Msg.Sandbox.FlagEnv, &sandboxExecUser)
 	// Everything after the sandbox ID is passed through to the remote command.
 	sandboxExecCmd.Flags().SetInterspersed(false)
-
-	sandboxCmd.AddCommand(
-		sandboxCreateCmd,
-		sandboxListCmd,
-		sandboxInfoCmd,
-		sandboxKillCmd,
-		sandboxPauseCmd,
-		sandboxResumeCmd,
-		sandboxConnectCmd,
-		sandboxExecCmd,
-		sandboxTimeoutCmd,
-		sandboxRefreshCmd,
-	)
 }

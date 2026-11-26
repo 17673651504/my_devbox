@@ -293,6 +293,20 @@ class Sandbox:
         finally:
             self.close()
 
+    @property
+    def sandbox_id(self) -> str:
+        """The sandbox ID of this handle."""
+        return self._info.sandbox_id
+
+    @property
+    def info(self) -> SandboxInfo:
+        """Cached sandbox info (refreshed by :meth:`get_info`)."""
+        return self._info
+
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
+
     @classmethod
     def create(
         cls,
@@ -369,20 +383,6 @@ class Sandbox:
             transport.close()
             raise
         return sandbox
-
-    @property
-    def sandbox_id(self) -> str:
-        """The sandbox ID of this handle."""
-        return self._info.sandbox_id
-
-    @property
-    def info(self) -> SandboxInfo:
-        """Cached sandbox info (refreshed by :meth:`get_info`)."""
-        return self._info
-
-    @property
-    def envd_url(self) -> str:
-        return _gateway_url(self._connection, self._gateway_url_override)
 
     def get_info(self) -> SandboxInfo:
         """Fetch the latest sandbox state from the Manager."""
@@ -575,6 +575,20 @@ class AsyncSandbox:
         finally:
             await self.close()
 
+    @property
+    def sandbox_id(self) -> str:
+        """The sandbox ID of this handle."""
+        return self._info.sandbox_id
+
+    @property
+    def info(self) -> SandboxInfo:
+        """Cached sandbox info (refreshed by :meth:`get_info`)."""
+        return self._info
+
+    @property
+    def envd_url(self) -> str:
+        return _gateway_url(self._connection, self._gateway_url_override)
+
     @classmethod
     async def create(
         cls,
@@ -651,20 +665,6 @@ class AsyncSandbox:
             await transport.close()
             raise
         return sandbox
-
-    @property
-    def sandbox_id(self) -> str:
-        """The sandbox ID of this handle."""
-        return self._info.sandbox_id
-
-    @property
-    def info(self) -> SandboxInfo:
-        """Cached sandbox info (refreshed by :meth:`get_info`)."""
-        return self._info
-
-    @property
-    def envd_url(self) -> str:
-        return _gateway_url(self._connection, self._gateway_url_override)
 
     async def get_info(self) -> SandboxInfo:
         """Fetch the latest sandbox state from the Manager."""
