@@ -8,7 +8,7 @@
 
 | 别名 | 模板 ID | vCPU | 内存 | 磁盘 |
 | --- | --- | ---: | ---: | ---: |
-| `default` | `tpl-devbox-base-test` | 2 | 1 GiB | 10 GiB |
+| `default` | `tpl-devbox-base` | 2 | 1 GiB | 10 GiB |
 
 
 ### 默认模板的预装组件
@@ -20,7 +20,6 @@
 | JavaScript | Node.js 20.18.0，npm 10.8.2 |
 | 命令行与版本控制 | Bash 5.2.15，Git 2.43.0 |
 | 下载与数据处理 | curl 8.4.0，Wget 1.21.4，jq 1.6，GNU tar 1.35 |
-| 沙箱运行时 | EnvD 0.1.6，提供命令、文件与终端接口 |
 
 上表列出沙箱内的组件。JavaScript SDK 的 Node.js 版本要求适用于运行 SDK 的客户端。组件版本以所选 Build 的实际环境为准。
 
