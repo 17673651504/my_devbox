@@ -58,14 +58,12 @@ class CommandHandle:
     ) -> CommandResult:
         """Wait for completion and collect the command output."""
         if self._result is None:
-            events = self._events or self._commands._connect_events(
+            events = self._events or self._commands.connect_events(
                 self.pid, self._reconnect_timeout
             )
             self._events = None
             try:
-                self._result = self._commands._collect_events(
-                    events, self.pid, on_stdout, on_stderr
-                )
+                self._result = self._commands.collect_events(events, self.pid, on_stdout, on_stderr)
             finally:
                 events.close()
         if check and self._result.exit_code != 0:
@@ -75,7 +73,7 @@ class CommandHandle:
     def send_stdin(self, data: str | bytes) -> None:
         """Send data to the process standard input."""
         self._ensure_active()
-        self._commands._send_input(self.pid, data, self._input_stream)
+        self._commands.send_input(self.pid, data, self._input_stream)
 
     def close_stdin(self) -> None:
         """Close the process standard input stream."""
@@ -163,7 +161,7 @@ class Commands:
         if background and (on_stdout is not None or on_stderr is not None):
             raise ValueError("background output callbacks belong on handle.wait()")
         started = time.monotonic()
-        handle = self._start(_command_body(command, envs, cwd, stdin), timeout=timeout, user=user)
+        handle = self.start(_command_body(command, envs, cwd, stdin), timeout=timeout, user=user)
         if background:
             return handle
         try:
@@ -179,7 +177,7 @@ class Commands:
         return CommandHandle(
             pid,
             self,
-            self._connect_events(pid, timeout),
+            self.connect_events(pid, timeout),
             reconnect_timeout=timeout,
         )
 
@@ -190,7 +188,7 @@ class Commands:
 
     def send_stdin(self, pid: int, data: str | bytes) -> None:
         """Send standard input to a process by process ID."""
-        self._send_input(pid, data, "stdin")
+        self.send_input(pid, data, "stdin")
 
     def close_stdin(self, pid: int) -> None:
         """Close standard input for a process by process ID."""
@@ -205,7 +203,7 @@ class Commands:
             {"process": {"pid": pid}, "signal": _signal(signal)},
         )
 
-    def _start(
+    def start(
         self,
         body: Mapping[str, object],
         *,
@@ -238,7 +236,7 @@ class Commands:
             reconnect_timeout=timeout,
         )
 
-    def _connect_events(
+    def connect_events(
         self, pid: int, timeout: float | None
     ) -> Generator[Mapping[str, Any], None, None]:
         events = self._transport().connect_stream(
@@ -256,7 +254,7 @@ class Commands:
             raise
         return events
 
-    def _send_input(self, pid: int, data: str | bytes, stream: str) -> None:
+    def send_input(self, pid: int, data: str | bytes, stream: str) -> None:
         _validate_pid(pid)
         self._transport().connect_unary(
             f"{_PROCESS}/SendInput",
@@ -267,7 +265,7 @@ class Commands:
         )
 
     @staticmethod
-    def _collect_events(
+    def collect_events(
         events: Iterator[Mapping[str, Any]],
         pid: int,
         on_stdout: OutputHandler | None,
@@ -311,12 +309,12 @@ class AsyncCommandHandle:
     ) -> CommandResult:
         """Wait for exit and collect output; raises on nonzero exit when ``check`` is true."""
         if self._result is None:
-            events = self._events or await self._commands._connect_events(
+            events = self._events or await self._commands.connect_events(
                 self.pid, self._reconnect_timeout
             )
             self._events = None
             try:
-                self._result = await self._commands._collect_events(
+                self._result = await self._commands.collect_events(
                     events, self.pid, on_stdout, on_stderr
                 )
             finally:
@@ -328,7 +326,7 @@ class AsyncCommandHandle:
     async def send_stdin(self, data: str | bytes) -> None:
         """Write data to this process's stdin or terminal."""
         self._ensure_active()
-        await self._commands._send_input(self.pid, data, self._input_stream)
+        await self._commands.send_input(self.pid, data, self._input_stream)
 
     async def close_stdin(self) -> None:
         """Send EOF to this (non-PTY) process so it can finish consuming input."""
@@ -416,7 +414,7 @@ class AsyncCommands:
         if background and (on_stdout is not None or on_stderr is not None):
             raise ValueError("background output callbacks belong on handle.wait()")
         started = time.monotonic()
-        handle = await self._start(
+        handle = await self.start(
             _command_body(command, envs, cwd, stdin), timeout=timeout, user=user
         )
         if background:
@@ -434,7 +432,7 @@ class AsyncCommands:
         return AsyncCommandHandle(
             pid,
             self,
-            await self._connect_events(pid, timeout),
+            await self.connect_events(pid, timeout),
             reconnect_timeout=timeout,
         )
 
@@ -446,7 +444,7 @@ class AsyncCommands:
 
     async def send_stdin(self, pid: int, data: str | bytes) -> None:
         """Send standard input to a process by process ID."""
-        await self._send_input(pid, data, "stdin")
+        await self.send_input(pid, data, "stdin")
 
     async def close_stdin(self, pid: int) -> None:
         """Close standard input for a process by process ID."""
@@ -463,7 +461,7 @@ class AsyncCommands:
             {"process": {"pid": pid}, "signal": _signal(signal)},
         )
 
-    async def _start(
+    async def start(
         self,
         body: Mapping[str, object],
         *,
@@ -496,7 +494,7 @@ class AsyncCommands:
             reconnect_timeout=timeout,
         )
 
-    async def _connect_events(
+    async def connect_events(
         self, pid: int, timeout: float | None
     ) -> AsyncGenerator[Mapping[str, Any], None]:
         transport = await self._transport()
@@ -515,7 +513,7 @@ class AsyncCommands:
             raise
         return events
 
-    async def _send_input(self, pid: int, data: str | bytes, stream: str) -> None:
+    async def send_input(self, pid: int, data: str | bytes, stream: str) -> None:
         _validate_pid(pid)
         transport = await self._transport()
         await transport.connect_unary(
@@ -527,7 +525,7 @@ class AsyncCommands:
         )
 
     @staticmethod
-    async def _collect_events(
+    async def collect_events(
         events: AsyncGenerator[Mapping[str, Any], None],
         pid: int,
         on_stdout: AsyncOutputHandler | None,
@@ -637,7 +635,8 @@ def _command_body(
 def _process_headers(user: str | None) -> dict[str, str]:
     headers = {"Keepalive-Ping-Interval": "50"}
     if user is not None:
-        if not user or user != user.strip() or ":" in user or "\x00" in user:
+        has_separator = ":" in user or "\x00" in user
+        if not user or user != user.strip() or has_separator:
             raise ConfigurationError("user must be a non-empty sandbox username")
         encoded = base64.b64encode(f"{user}:".encode()).decode("ascii")
         headers["Authorization"] = f"Basic {encoded}"

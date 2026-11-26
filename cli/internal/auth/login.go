@@ -260,6 +260,9 @@ func maskBodyKeys(data []byte) string {
 
 // maskJSONKeys masks apiKey values in a decoded JSON object, recursively.
 func maskJSONKeys(m map[string]any) {
+	if m == nil {
+		return
+	}
 	for k, v := range m {
 		if k == "apiKey" {
 			if s, ok := v.(string); ok {

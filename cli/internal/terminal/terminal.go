@@ -157,6 +157,8 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 				endCh <- e.End
 				cancel()
 				return
+			default:
+				// Keepalive and unknown frames: nothing to render.
 			}
 		}
 		if err := stream.Err(); err != nil {

@@ -60,16 +60,16 @@ const (
 
 // Path returns the absolute path of the config file (for display).
 func Path() (string, error) {
-	dir, err := ConfigDir()
+	dir, err := Dir()
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(dir, configFileName), nil
 }
 
-// ConfigDir returns the devbox config directory (~/.huawei/devbox),
+// Dir returns the devbox config directory (~/.huawei/devbox),
 // aligned with the shared dot-directory layout.
-func ConfigDir() (string, error) {
+func Dir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf(i18n.T(i18n.Msg.Config.ResolveHomeFailed), err)
@@ -139,7 +139,7 @@ func readPersisted() (map[string]any, error) {
 
 // writePersisted stores `values` as compact, sorted JSON in the config file.
 func writePersisted(values map[string]any) error {
-	dir, err := ConfigDir()
+	dir, err := Dir()
 	if err != nil {
 		return err
 	}

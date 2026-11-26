@@ -31,7 +31,10 @@ func systemLang() string {
 			}
 		}
 	}
-	r, _, _ := procGetUserDefaultUILanguage.Call()
+	r, _, callErr := procGetUserDefaultUILanguage.Call()
+	if callErr != nil {
+		return "en-us"
+	}
 	langID := uint16(r)
 	// LANGID layout: the low 9 bits hold the primary language id; 0x04 is
 	// Chinese. Mask with 0x3FF to ignore the sublanguage (simplified/

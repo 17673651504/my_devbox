@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import posixpath
 import re
 import sys
 import tempfile
@@ -222,7 +223,8 @@ def validate_lifecycle(client: DevBox, sandbox: Sandbox, validator: Validator) -
         _step("process.disconnect() | keep the remote process alive", process.disconnect)
 
     def persistence(handle: Sandbox | None = None) -> None:
-        assert process is not None
+        if process is None:
+            raise RuntimeError("persistence() called before the process was created")
         target = sandbox if handle is None else handle
         _equal(
             _step(
@@ -820,14 +822,15 @@ def _filesystem_transfer(sandbox: Sandbox, root: str) -> None:
     with tempfile.TemporaryDirectory() as directory:
         source = Path(directory, "source.txt")
         target = Path(directory, "target.txt")
+        transfer_remote = posixpath.join(root, "transfer.txt")
         source.write_text("transfer-ok", encoding="utf-8")
         _step(
-            f"files.upload({str(source)!r}, {root + '/transfer.txt'!r}) | content='transfer-ok'",
-            lambda: sandbox.files.upload(source, f"{root}/transfer.txt"),
+            f"files.upload({str(source)!r}, {transfer_remote!r}) | content='transfer-ok'",
+            lambda: sandbox.files.upload(source, transfer_remote),
         )
         _step(
-            f"files.download({root + '/transfer.txt'!r}, {str(target)!r})",
-            lambda: sandbox.files.download(f"{root}/transfer.txt", target),
+            f"files.download({transfer_remote!r}, {str(target)!r})",
+            lambda: sandbox.files.download(transfer_remote, target),
         )
         _equal(
             _step("Read downloaded local file", lambda: target.read_text(encoding="utf-8")),
