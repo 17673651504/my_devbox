@@ -8,7 +8,7 @@
 
 | 别名 | 模板 ID | vCPU | 内存 | 磁盘 |
 | --- | --- | ---: | ---: | ---: |
-| `default` | `tpl-devbox-base` | 2 | 1 GiB | 10 GiB |
+| `default` | `tpl-devbox-base` | 1 | 2 GiB | 10 GiB |
 
 
 ### 默认模板的预装组件
