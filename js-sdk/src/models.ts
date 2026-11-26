@@ -224,13 +224,9 @@ export function parseTemplateInfo(value: WireObject): TemplateInfo {
  */
 export function parseConnection(value: WireObject, sandboxId: string): SandboxConnection {
   let domain = stringValue(value.envdUrl ?? value.domain ?? '');
-  if (
-    !value.envdUrl &&
-    value.envdAccessToken &&
-    !value.connectToken &&
-    domain &&
-    !domain.includes('://')
-  ) {
+  const isRelativeDomain = !!domain && !domain.includes('://');
+  const needsEnvdUrl = !value.envdUrl && value.envdAccessToken && !value.connectToken;
+  if (needsEnvdUrl && isRelativeDomain) {
     domain = `https://49983-${sandboxId}.${domain}`;
   }
   if (domain && !domain.startsWith('http://') && !domain.startsWith('https://')) {

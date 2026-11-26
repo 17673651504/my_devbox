@@ -327,6 +327,41 @@ async function firstPid(events: AsyncIterator<WireObject>, action: string): Prom
   return pid;
 }
 
+/** Extracts decoded output chunks from a single Connect data frame. */
+function extractChunks(
+  data: Record<string, unknown>,
+  stdoutDecoder: TextDecoder,
+  stderrDecoder: TextDecoder,
+): OutputChunk[] {
+  const chunks: OutputChunk[] = [];
+  for (const source of ['stdout', 'stderr', 'pty'] as const) {
+    if (!(source in data)) {
+      continue;
+    }
+    const target = source === 'pty' ? 'stdout' : source;
+    const decoder = target === 'stdout' ? stdoutDecoder : stderrDecoder;
+    const value = decoder.decode(decodeBase64(data[source]), { stream: true });
+    if (value) {
+      chunks.push({ stream: target, data: value });
+    }
+  }
+  return chunks;
+}
+
+/** Dispatches decoded chunks to the output buffers and callbacks. */
+async function dispatchChunks(
+  chunks: OutputChunk[],
+  stdout: string[],
+  stderr: string[],
+  onStdout?: OutputHandler,
+  onStderr?: OutputHandler,
+): Promise<void> {
+  for (const chunk of chunks) {
+    (chunk.stream === 'stdout' ? stdout : stderr).push(chunk.data);
+    await (chunk.stream === 'stdout' ? onStdout?.(chunk.data) : onStderr?.(chunk.data));
+  }
+}
+
 async function collectEvents(
   events: AsyncIterator<WireObject>,
   pid: number,
@@ -353,22 +388,8 @@ async function collectEvents(
     }
     const data = event.data && typeof event.data === 'object' ? objectValue(event.data) : undefined;
     if (data) {
-      const chunks: OutputChunk[] = [];
-      for (const source of ['stdout', 'stderr', 'pty'] as const) {
-        if (!(source in data)) {
-          continue;
-        }
-        const target = source === 'pty' ? 'stdout' : source;
-        const decoder = target === 'stdout' ? stdoutDecoder : stderrDecoder;
-        const value = decoder.decode(decodeBase64(data[source]), { stream: true });
-        if (value) {
-          chunks.push({ stream: target, data: value });
-        }
-      }
-      for (const chunk of chunks) {
-        (chunk.stream === 'stdout' ? stdout : stderr).push(chunk.data);
-        await (chunk.stream === 'stdout' ? onStdout?.(chunk.data) : onStderr?.(chunk.data));
-      }
+      const chunks = extractChunks(data, stdoutDecoder, stderrDecoder);
+      await dispatchChunks(chunks, stdout, stderr, onStdout, onStderr);
     }
     if (event.end && typeof event.end === 'object') {
       const end = objectValue(event.end);
