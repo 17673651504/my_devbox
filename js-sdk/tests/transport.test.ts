@@ -20,7 +20,7 @@ describe('Transport', () => {
     const cancel = vi.fn();
     const response = new Response(
       new ReadableStream({
-        start(controller) {
+        start(controller): void {
           controller.enqueue(connectFrame({ event: { start: { pid: 7 } } }));
         },
         cancel,
@@ -105,7 +105,9 @@ describe('Transport', () => {
     const seen: string[] = [];
     const transport = new Transport('https://runtime.example.test', {
       dispatcher: agent,
-      onResponse: (headers) => seen.push(headers.get('X-Devbox-Connect-Token-Refreshed') ?? ''),
+      onResponse: (headers): void => {
+        seen.push(headers.get('X-Devbox-Connect-Token-Refreshed') ?? '');
+      },
     });
 
     await expect(transport.request('GET', '/unavailable')).rejects.toBeInstanceOf(Error);

@@ -500,12 +500,10 @@ function createBody(template: string, options: CreateSandboxOptions): WireObject
   }
   if (options.network !== undefined) {
     const network = options.network;
-    if (
-      !network ||
-      typeof network !== 'object' ||
-      Array.isArray(network) ||
-      Object.keys(network).some((key) => key !== 'allowPublicTraffic')
-    ) {
+    if (!network || typeof network !== 'object' || Array.isArray(network)) {
+      throw new TypeError('network only supports allowPublicTraffic');
+    }
+    if (Object.keys(network).some((key) => key !== 'allowPublicTraffic')) {
       throw new TypeError('network only supports allowPublicTraffic');
     }
     if (

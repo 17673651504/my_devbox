@@ -236,7 +236,9 @@ export class Commands {
     const headers: Record<string, string> = { 'Keepalive-Ping-Interval': '50' };
     const user = options.user;
     if (user !== undefined) {
-      if (!user || user !== user.trim() || user.includes(':') || user.includes('\0')) {
+      const isBlank = !user || user !== user.trim();
+      const hasSeparator = user.includes(':') || user.includes('\0');
+      if (isBlank || hasSeparator) {
         throw new ConfigurationError('user must be a non-empty sandbox username');
       }
       headers.Authorization = `Basic ${Buffer.from(`${user}:`, 'utf8').toString('base64')}`;

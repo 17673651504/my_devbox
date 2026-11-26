@@ -41,14 +41,12 @@ type envdLoggingTransport struct {
 	base http.RoundTripper
 }
 
-func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Quiet requests (interactive PTY keystrokes and resize streams) bypass
-	// the debug log entirely; one log pair per keystroke would flood the
-	// raw-mode terminal and make the session unusable under -v.
-	if req.Context().Value(quietKey{}) != nil || !slog.Default().Enabled(req.Context(), slog.LevelDebug) {
-		return t.base.RoundTrip(req)
-	}
-
+// requestLogAttrs builds the request log attributes: auth user selection,
+// relay token presence and the body preview. The request body is buffered
+// only when its length is known and bounded: a client stream's body
+// (StreamInput) is written while the request is in flight, and reading it
+// would deadlock.
+func requestLogAttrs(req *http.Request) []any {
 	attrs := []any{
 		"method", req.Method,
 		"url", req.URL.String(),
@@ -59,9 +57,6 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 	if cookie, err := req.Cookie(envdRelayCookie); err == nil {
 		attrs = append(attrs, "relay_token", fmt.Sprintf("present(len=%d)", len(cookie.Value)))
 	}
-	// Buffer the request body only when its length is known and bounded: a
-	// client stream's body (StreamInput) is written while the request is in
-	// flight, and reading it would deadlock.
 	if req.Body != nil && req.ContentLength >= 0 && req.ContentLength <= maxBodyForLog {
 		if data, err := io.ReadAll(req.Body); err == nil {
 			_ = req.Body.Close()
@@ -73,7 +68,36 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 	} else if req.Body != nil {
 		attrs = append(attrs, "body", "<streaming>")
 	}
-	slog.DebugContext(req.Context(), "devbox envd request", attrs...)
+	return attrs
+}
+
+// logErrorResponse buffers a bounded prefix of a non-2xx body for the debug
+// log and prepends it to the response body, so the caller still reads the
+// full body while the log carries the Connect error JSON.
+func logErrorResponse(resp *http.Response, rattrs []any) []any {
+	if resp.Body == nil {
+		return rattrs
+	}
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, maxLoggedErrorBody))
+	resp.Body = &prefixedReadCloser{
+		Reader:   io.MultiReader(bytes.NewReader(data), resp.Body),
+		original: resp.Body,
+	}
+	if len(data) > 0 {
+		rattrs = append(rattrs, "body", truncateBody(string(data), len(data)))
+	}
+	return rattrs
+}
+
+func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Quiet requests (interactive PTY keystrokes and resize streams) bypass
+	// the debug log entirely; one log pair per keystroke would flood the
+	// raw-mode terminal and make the session unusable under -v.
+	if req.Context().Value(quietKey{}) != nil || !slog.Default().Enabled(req.Context(), slog.LevelDebug) {
+		return t.base.RoundTrip(req)
+	}
+
+	slog.DebugContext(req.Context(), "devbox envd request", requestLogAttrs(req)...)
 
 	start := time.Now()
 	resp, err := t.base.RoundTrip(req)
@@ -94,21 +118,11 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 		"status", resp.StatusCode,
 		"content_type", resp.Header.Get("Content-Type"),
 	)
-	// Non-2xx: buffer the error body (the Connect error JSON) for the log and
-	// hand the remaining bytes back to the caller via the prefixed ReadCloser.
-	// 2xx bodies are never touched - a streaming response only returns at EOF,
-	// so buffering it would stall the session.
+	// Non-2xx: buffer the error body for the log; 2xx bodies are never
+	// touched - a streaming response only returns at EOF, so buffering it
+	// would stall the session.
 	if resp.StatusCode < statusOKMin || resp.StatusCode > statusOKMax {
-		if resp.Body != nil {
-			data, _ := io.ReadAll(io.LimitReader(resp.Body, maxLoggedErrorBody))
-			resp.Body = &prefixedReadCloser{
-				Reader:   io.MultiReader(bytes.NewReader(data), resp.Body),
-				original: resp.Body,
-			}
-			if len(data) > 0 {
-				rattrs = append(rattrs, "body", truncateBody(string(data), len(data)))
-			}
-		}
+		rattrs = logErrorResponse(resp, rattrs)
 	} else {
 		rattrs = append(rattrs, "body", "<stream>")
 	}
