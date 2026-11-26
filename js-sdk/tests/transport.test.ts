@@ -27,7 +27,7 @@ describe('Transport', () => {
       }),
       { headers: { 'Content-Type': 'application/connect+json' } },
     );
-    const stream = new ConnectStream(async () => response);
+    const stream = new ConnectStream(async (): Promise<Response> => response);
     for await (const event of stream) {
       expect(event).toEqual({ event: { start: { pid: 7 } } });
       break;
@@ -41,7 +41,7 @@ describe('Transport', () => {
     const response = new Response(new ReadableStream({ cancel }), {
       headers: { 'Content-Type': 'text/html' },
     });
-    const stream = new ConnectStream(async () => response);
+    const stream = new ConnectStream(async (): Promise<Response> => response);
     await expect(stream[Symbol.asyncIterator]().next()).rejects.toThrow(ProtocolError);
     expect(cancel).toHaveBeenCalledOnce();
     expect(stream.signal.aborted).toBe(true);

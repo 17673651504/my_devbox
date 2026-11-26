@@ -41,7 +41,7 @@ export interface WaitOptions {
 
 interface EventSource {
   iterator: AsyncIterator<WireObject>;
-  close(): void;
+  close: () => void;
 }
 
 /**

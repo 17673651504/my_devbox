@@ -71,7 +71,7 @@ describe('Commands', () => {
         });
       const transport = new Transport('https://runtime.example.test', { dispatcher: agent });
       try {
-        const provide = async () => transport;
+        const provide = async (): Promise<Transport> => transport;
         const session = await new Pty(new Commands(provide), provide).start('/bin/bash', {
           envs,
           user: 'nobody',
