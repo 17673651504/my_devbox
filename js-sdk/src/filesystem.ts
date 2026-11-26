@@ -180,11 +180,14 @@ function sandboxPath(value: string): string {
 }
 
 function items(value: unknown, key: string): WireObject[] {
-  const source = Array.isArray(value)
-    ? value
-    : value && typeof value === 'object'
-      ? objectValue(value)[key]
-      : [];
+  let source: unknown;
+  if (Array.isArray(value)) {
+    source = value;
+  } else if (value && typeof value === 'object') {
+    source = objectValue(value)[key];
+  } else {
+    source = [];
+  }
   if (!Array.isArray(source)) {
     throw new ProtocolError('filesystem response is invalid');
   }
