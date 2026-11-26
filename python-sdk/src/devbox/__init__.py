@@ -4,7 +4,6 @@ Start with :class:`Sandbox` for one sandbox. Use :class:`DevBox` only when an
 application needs to manage several sandboxes through one reusable client.
 """
 
-from ._version import __version__
 from .client import AsyncDevBox, DevBox
 from .commands import AsyncCommandHandle, CommandHandle
 from .envd import AsyncEnvd, Envd
@@ -81,3 +80,5 @@ __all__ = [
     "ValidationError",
     "__version__",
 ]
+
+from ._version import __version__

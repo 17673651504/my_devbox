@@ -106,6 +106,18 @@ class Commands:
     def __init__(self, transport: SyncTransportProvider) -> None:
         self._transport = transport
 
+    @staticmethod
+    def collect_events(
+        events: Iterator[Mapping[str, Any]],
+        pid: int,
+        on_stdout: OutputHandler | None,
+        on_stderr: OutputHandler | None,
+    ) -> CommandResult:
+        collector = _OutputCollector(pid, on_stdout, on_stderr)
+        for event in events:
+            collector.add(event)
+        return collector.result()
+
     @overload
     def run(
         self,
@@ -120,7 +132,8 @@ class Commands:
         on_stdout: OutputHandler | None = None,
         on_stderr: OutputHandler | None = None,
         check: bool = True,
-    ) -> CommandResult: ...
+    ) -> CommandResult:
+        raise NotImplementedError
 
     @overload
     def run(
@@ -136,7 +149,8 @@ class Commands:
         on_stdout: None = None,
         on_stderr: None = None,
         check: bool = True,
-    ) -> CommandHandle: ...
+    ) -> CommandHandle:
+        raise NotImplementedError
 
     def run(
         self,
@@ -264,18 +278,6 @@ class Commands:
             },
         )
 
-    @staticmethod
-    def collect_events(
-        events: Iterator[Mapping[str, Any]],
-        pid: int,
-        on_stdout: OutputHandler | None,
-        on_stderr: OutputHandler | None,
-    ) -> CommandResult:
-        collector = _OutputCollector(pid, on_stdout, on_stderr)
-        for event in events:
-            collector.add(event)
-        return collector.result()
-
 
 class AsyncCommandHandle:
     """Asynchronous counterpart of :class:`CommandHandle`.
@@ -359,6 +361,22 @@ class AsyncCommands:
     def __init__(self, transport: AsyncTransportProvider) -> None:
         self._transport = transport
 
+    @staticmethod
+    async def collect_events(
+        events: AsyncGenerator[Mapping[str, Any], None],
+        pid: int,
+        on_stdout: AsyncOutputHandler | None,
+        on_stderr: AsyncOutputHandler | None,
+    ) -> CommandResult:
+        collector = _OutputCollector(pid)
+        async for event in events:
+            for chunk in collector.add(event):
+                if chunk.stream == "stdout" and on_stdout:
+                    await _invoke(on_stdout, chunk.data)
+                if chunk.stream == "stderr" and on_stderr:
+                    await _invoke(on_stderr, chunk.data)
+        return collector.result()
+
     @overload
     async def run(
         self,
@@ -373,7 +391,8 @@ class AsyncCommands:
         on_stdout: AsyncOutputHandler | None = None,
         on_stderr: AsyncOutputHandler | None = None,
         check: bool = True,
-    ) -> CommandResult: ...
+    ) -> CommandResult:
+        raise NotImplementedError
 
     @overload
     async def run(
@@ -389,7 +408,8 @@ class AsyncCommands:
         on_stdout: None = None,
         on_stderr: None = None,
         check: bool = True,
-    ) -> AsyncCommandHandle: ...
+    ) -> AsyncCommandHandle:
+        raise NotImplementedError
 
     async def run(
         self,
@@ -524,22 +544,6 @@ class AsyncCommands:
             },
         )
 
-    @staticmethod
-    async def collect_events(
-        events: AsyncGenerator[Mapping[str, Any], None],
-        pid: int,
-        on_stdout: AsyncOutputHandler | None,
-        on_stderr: AsyncOutputHandler | None,
-    ) -> CommandResult:
-        collector = _OutputCollector(pid)
-        async for event in events:
-            for chunk in collector.add(event):
-                if chunk.stream == "stdout" and on_stdout:
-                    await _invoke(on_stdout, chunk.data)
-                if chunk.stream == "stderr" and on_stderr:
-                    await _invoke(on_stderr, chunk.data)
-        return collector.result()
-
 
 class _OutputCollector:
     def __init__(
@@ -565,16 +569,21 @@ class _OutputCollector:
         data = event.get("data")
         if isinstance(data, Mapping):
             for stream in ("stdout", "stderr", "pty"):
-                if stream in data:
-                    target = "stdout" if stream == "pty" else stream
-                    value = self._decode(target, data[stream])
-                    if value:
-                        self._append(target, value)
-                        chunks.append(OutputChunk(stream=target, data=value))
+                chunks.extend(self._collect_stream(data, stream))
         end = event.get("end")
         if isinstance(end, Mapping):
             self._exit_code = int(end.get("exitCode", end.get("exit_code", 0)))
         return tuple(chunks)
+
+    def _collect_stream(self, data: Mapping[str, Any], stream: str) -> list[OutputChunk]:
+        if stream not in data:
+            return []
+        target = "stdout" if stream == "pty" else stream
+        value = self._decode(target, data[stream])
+        if not value:
+            return []
+        self._append(target, value)
+        return [OutputChunk(stream=target, data=value)]
 
     def result(self) -> CommandResult:
         self._flush()
