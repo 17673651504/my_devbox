@@ -1,4 +1,4 @@
-# 用 OpenCode 模板生成并分享 Demo
+# 使用OpenCode模板创建沙箱，创作并预览
 
 在私有沙箱中运行 OpenCode，用提示词生成一个静态网页，再将生成的 HTML 复制到专门用于匿名预览的 Base 沙箱。
 
