@@ -13,16 +13,26 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/huaweicloud/devspace-devbox/cli/internal/api/grpc/process"
 	"github.com/huaweicloud/devspace-devbox/cli/internal/client"
-
-	"golang.org/x/term"
 )
 
 // maxStartAttempts bounds StartPTY retries when the remote shell exits
 // without producing any output: a gateway wake-up of a paused sandbox
 // (autoResume) or a lingering previous stream can tear the first stream down.
 const maxStartAttempts = 3
+
+// Terminal session tuning knobs: fallback console size, pump/poll intervals
+// and the grace period that lets pending output flush before restore.
+const (
+	defaultCols        = 80
+	defaultRows        = 24
+	pumpInterval       = 10 * time.Millisecond
+	resizePollInterval = 500 * time.Millisecond
+	flushGracePeriod   = 100 * time.Millisecond
+)
 
 // enableVT enables ANSI escape sequence processing on out so remote PTY
 // output renders correctly. Unix terminals process ANSI escapes by default,
@@ -62,7 +72,7 @@ func (s *Session) Run(ctx context.Context) (*process.ProcessEvent_EndEvent, erro
 		}
 	}
 
-	cols, rows := 80, 24
+	cols, rows := defaultCols, defaultRows
 	if w, h, err := term.GetSize(int(s.out.Fd())); err == nil && w > 0 && h > 0 {
 		cols, rows = w, h
 	}
@@ -173,7 +183,7 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 			if ctx.Err() != nil {
 				return
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(pumpInterval)
 		}
 		buf := make([]byte, 512)
 		for {
@@ -197,10 +207,10 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 			if ctx.Err() != nil {
 				return
 			}
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(pumpInterval)
 		}
 		lastCols, lastRows := cols, rows
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := time.NewTicker(resizePollInterval)
 		defer ticker.Stop()
 		for {
 			select {
@@ -221,7 +231,7 @@ func (s *Session) runOnce(ctx context.Context, cols, rows int) (*process.Process
 	<-ctx.Done()
 	// Small grace period so pending remote output is flushed before the
 	// terminal state is restored.
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(flushGracePeriod)
 
 	select {
 	case err := <-errCh:

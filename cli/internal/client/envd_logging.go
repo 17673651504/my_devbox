@@ -20,6 +20,12 @@ import (
 // presence and length.
 const envdRelayCookie = "relay_token"
 
+// statusOKMin and statusOKMax bound the 2xx range for response body logging.
+const (
+	statusOKMin = 200
+	statusOKMax = 299
+)
+
 // maxLoggedErrorBody bounds how many bytes of a non-2xx response body are
 // captured for the debug log; the remainder still reaches the caller.
 const maxLoggedErrorBody = 4096
@@ -92,7 +98,7 @@ func (t *envdLoggingTransport) RoundTrip(req *http.Request) (*http.Response, err
 	// hand the remaining bytes back to the caller via the prefixed ReadCloser.
 	// 2xx bodies are never touched - a streaming response only returns at EOF,
 	// so buffering it would stall the session.
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+	if resp.StatusCode < statusOKMin || resp.StatusCode > statusOKMax {
 		if resp.Body != nil {
 			data, _ := io.ReadAll(io.LimitReader(resp.Body, maxLoggedErrorBody))
 			resp.Body = &prefixedReadCloser{

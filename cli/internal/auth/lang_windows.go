@@ -39,7 +39,9 @@ func systemLang() string {
 	// LANGID layout: the low 9 bits hold the primary language id; 0x04 is
 	// Chinese. Mask with 0x3FF to ignore the sublanguage (simplified/
 	// traditional) and match any Chinese UI language.
-	if langID&0x3FF == 0x04 {
+	const langIDPrimaryMask = 0x3FF
+	const langIDChinese = 0x04
+	if langID&langIDPrimaryMask == langIDChinese {
 		return "zh-cn"
 	}
 	return "en-us"

@@ -37,6 +37,10 @@ const (
 	// LoginTimeout bounds how long [*LoginSession.Wait] blocks for the browser
 	// callback.
 	LoginTimeout = 5 * time.Minute
+
+	// maxCallbackBody bounds the callback request body size (8 KiB is
+	// generous for a JSON payload of apiKey/userName/userId).
+	maxCallbackBody = 8192
 )
 
 // Credential is the stored authentication material.
@@ -199,7 +203,7 @@ func (s *LoginSession) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cb callbackBody
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxCallbackBody))
 	if err != nil || json.Unmarshal(data, &cb) != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(i18n.T(i18n.Msg.Auth.CallbackBadBody)))

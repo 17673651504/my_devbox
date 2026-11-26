@@ -141,6 +141,13 @@ var sandboxListCmd = &cobra.Command{
 	RunE:    runError(runSandboxList),
 }
 
+// sandboxListLimitMax is the API upper bound for the list limit parameter.
+const sandboxListLimitMax = 1000
+
+// defaultSandboxTimeout is the default TTL in seconds for sandbox create and
+// timeout commands (aligned with the service default).
+const defaultSandboxTimeout = 300
+
 // runSandboxList validates the filters, queries the sandboxes and prints them
 // as a table or JSON.
 func runSandboxList(cmd *cobra.Command, _ []string) error {
@@ -157,25 +164,9 @@ func runSandboxList(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
 		}
 	}
-	params := &manager.ListSandboxesParams{
-		Metadata:     manager.OptString(sandboxListMetadata),
-		Template:     manager.OptString(sandboxListTemplate),
-		StartedAfter: manager.OptString(sandboxListStartedAfter),
-		Order:        manager.OptString(sandboxListOrder),
-	}
-	if cmd.Flags().Changed("state") {
-		states, err := helpers.ParseStates(sandboxListStates)
-		if err != nil {
-			return err
-		}
-		params.State = &states
-	}
-	// Aligned with e2b: 0 means no limit (the limit parameter is not sent).
-	if sandboxListLimit < 0 || sandboxListLimit > 1000 {
-		return fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidLimit), sandboxListLimit)
-	}
-	if sandboxListLimit != 0 {
-		params.Limit = manager.PInt(sandboxListLimit)
+	params, err := buildListParams(cmd)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.ListSandboxes(cmd.Context(), params)
@@ -186,14 +177,52 @@ func runSandboxList(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(cmd.OutOrStdout(), i18n.T(i18n.Msg.Sandbox.ListEmpty))
 		return nil
 	}
-	// Redact sensitive fields (connectToken/tokenExpiration) from JSON output,
-	// consistent with `info -f json`.
-	jsonSandboxes := make([]map[string]any, 0, len(res.Sandboxes))
-	for i := range res.Sandboxes {
-		jsonSandboxes = append(jsonSandboxes, helpers.SandboxJSON(&res.Sandboxes[i]))
+	return printSandboxList(cmd, res.Sandboxes)
+}
+
+// buildListParams validates the list flag values and assembles the query
+// parameters; validation happens before assembly so nothing is set twice.
+func buildListParams(cmd *cobra.Command) (*manager.ListSandboxesParams, error) {
+	if sandboxListOrder != "" && sandboxListOrder != "asc" && sandboxListOrder != "desc" {
+		return nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidOrder), sandboxListOrder)
 	}
-	rows := make([][]string, 0, len(res.Sandboxes))
-	for _, sb := range res.Sandboxes {
+	if sandboxListStartedAfter != "" {
+		if _, err := time.Parse(time.RFC3339, sandboxListStartedAfter); err != nil {
+			return nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidStartedAfter), sandboxListStartedAfter)
+		}
+	}
+	params := &manager.ListSandboxesParams{
+		Metadata:     manager.OptString(sandboxListMetadata),
+		Template:     manager.OptString(sandboxListTemplate),
+		StartedAfter: manager.OptString(sandboxListStartedAfter),
+		Order:        manager.OptString(sandboxListOrder),
+	}
+	if cmd.Flags().Changed("state") {
+		states, err := helpers.ParseStates(sandboxListStates)
+		if err != nil {
+			return nil, err
+		}
+		params.State = &states
+	}
+	// Aligned with e2b: 0 means no limit (the limit parameter is not sent).
+	if sandboxListLimit < 0 || sandboxListLimit > sandboxListLimitMax {
+		return nil, fmt.Errorf(i18n.T(i18n.Msg.Sandbox.InvalidLimit), sandboxListLimit)
+	}
+	if sandboxListLimit != 0 {
+		params.Limit = manager.PInt(sandboxListLimit)
+	}
+	return params, nil
+}
+
+// printSandboxList renders sandboxes as JSON (sensitive fields redacted) or a
+// fixed-column table.
+func printSandboxList(cmd *cobra.Command, sandboxes []manager.Sandbox) error {
+	jsonSandboxes := make([]map[string]any, 0, len(sandboxes))
+	for i := range sandboxes {
+		jsonSandboxes = append(jsonSandboxes, helpers.SandboxJSON(&sandboxes[i]))
+	}
+	rows := make([][]string, 0, len(sandboxes))
+	for _, sb := range sandboxes {
 		rows = append(rows, []string{
 			sb.SandboxID,
 			sb.TemplateID,
@@ -641,7 +670,7 @@ func addSessionFlags(flags *pflag.FlagSet, cwd *string, env *[]string, envUsage 
 }
 
 func init() {
-	sandboxCreateCmd.Flags().Int32VarP(&sandboxCreateTimeout, "timeout", "t", 300,
+	sandboxCreateCmd.Flags().Int32VarP(&sandboxCreateTimeout, "timeout", "t", defaultSandboxTimeout,
 		i18n.T(i18n.Msg.Sandbox.FlagTimeout))
 	sandboxCreateCmd.Flags().StringArrayVarP(&sandboxCreateMetadata, "metadata", "m", nil,
 		i18n.T(i18n.Msg.Sandbox.FlagMetadata))
@@ -688,12 +717,12 @@ func init() {
 	addSessionFlags(sandboxConnectCmd.Flags(), &sandboxConnectCwd, &sandboxConnectEnv,
 		i18n.Msg.Sandbox.FlagEnvTerm, &sandboxConnectUser)
 
-	sandboxTimeoutCmd.Flags().Int32VarP(&sandboxTimeoutValue, "timeout", "t", 300,
+	sandboxTimeoutCmd.Flags().Int32VarP(&sandboxTimeoutValue, "timeout", "t", defaultSandboxTimeout,
 		i18n.T(i18n.Msg.Sandbox.FlagNewTimeout))
 	sandboxInfoCmd.Flags().StringVarP(&sandboxInfoFormat, "format", "f", "pretty",
 		i18n.T(i18n.Msg.Sandbox.FlagFormat))
 
-	sandboxRefreshCmd.Flags().Int32VarP(&sandboxRefreshDuration, "duration", "d", 300,
+	sandboxRefreshCmd.Flags().Int32VarP(&sandboxRefreshDuration, "duration", "d", defaultSandboxTimeout,
 		i18n.T(i18n.Msg.Sandbox.FlagDuration))
 
 	sandboxExecCmd.Flags().BoolVarP(&sandboxExecBackground, "background", "b", false,

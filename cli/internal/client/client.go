@@ -105,11 +105,18 @@ func (e *UpgradeRequiredError) Error() string {
 	return fmt.Sprintf("\n%s\n%s\n%s\n", msg, i18n.T(i18n.Msg.Client.UpdateLabel), installCommands())
 }
 
+// defaultHTTPTimeout is the fallback timeout when the caller provides no
+// http.Client.
+const defaultHTTPTimeout = 30 * time.Second
+
+// maxErrorExcerpt bounds the error excerpt echoed for non-JSON bodies.
+const maxErrorExcerpt = 512
+
 // New builds a Client authenticated against the given server. An empty
 // apiKey skips the auth header.
 func New(server, apiKey string, httpClient *http.Client) (*Client, error) {
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 30 * time.Second}
+		httpClient = &http.Client{Timeout: defaultHTTPTimeout}
 	}
 	if httpClient.Transport == nil {
 		httpClient.Transport = http.DefaultTransport
@@ -165,8 +172,8 @@ func checkStatus(resp *http.Response, body []byte) error {
 	}
 	// Non-JSON or unexpected body: echo a trimmed excerpt for debuggability.
 	msg = strings.TrimSpace(string(body))
-	if len(msg) > 512 {
-		msg = msg[:512] + "..."
+	if len(msg) > maxErrorExcerpt {
+		msg = msg[:maxErrorExcerpt] + "..."
 	}
 	apiErr.Message = i18n.T(i18n.Msg.Client.ErrorResponsePrefix) + msg
 	return apiErr
